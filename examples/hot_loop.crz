@@ -1,0 +1,8 @@
+#[fusion]
+#[realtime]
+ADD R1, R0, 10;
+_loop:
+LOAD R2, [R1];
+VDOT32 R3, R2, R4;
+BR_IF LT R1, 20, _loop;
+HALT;

@@ -1,0 +1,2 @@
+[{'mnemonic': 'ADD', 'operands': ['R1', 'R0', '10']}, {'mnemonic': 'LOAD', 'operands': ['R2', '[R1]']}, {'mnemonic': 'VDOT32', 'operands': ['R3', 'R2', 'R4']}, {'mnemonic': 'BR_IF', 'operands': ['LT', 'R1', '20', '_loop']}, {'mnemonic': 'HALT', 'operands': []}]
+{'_loop': 1}

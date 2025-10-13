@@ -189,47 +189,11 @@ class Simulator:
             rd, rs1, rs2, rs3 = operands
             self.regs[rd] = self.get_val(rs1) + self.get_val(rs2) * self.get_val(rs3)
         elif mnemonic == "FUSED_LOAD_ADD":
-            # supported operand formats:
-            #  - new: [load_dst, add_dst, mem_ref, imm_or_reg]
-            #  - old/fallback: [add_dst, mem_ref, imm_or_reg]  (back-compat)
-            if len(operands) == 4:
-                load_dst, add_dst, mem_ref, imm = operands
-            elif len(operands) == 3:
-                # legacy: no explicit load_dst -> assume the ADD source register
-                # but legacy loses original load_dst; to preserve semantics best
-                # we treat add_dst as both load_dst and add_dst (least bad fallback)
-                add_dst, mem_ref, imm = operands
-                load_dst = add_dst
-            else:
-                raise ValueError(f"FUSED_LOAD_ADD: unexpected operands {operands}")
-
-            # normalize mem_ref: accept "[a + i]" or "a + i"
-            if isinstance(mem_ref, str) and mem_ref.startswith('[') and mem_ref.endswith(']'):
-                addr_str = mem_ref[1:-1]
-            else:
-                addr_str = mem_ref
-
-            addr = self.get_val(addr_str)
-            self.check_memory_bounds(addr)
-
-            # load value
-            val = self.memory[addr]
-            # write load destination (preserve semantics of LOAD)
-            self.regs[load_dst] = val
-
-            # resolve immediate/reg for add
-            try:
-                imm_val = int(imm)
-            except Exception:
-                imm_val = self.get_val(imm)
-
-            # compute add result and write
-            self.regs[add_dst] = val + imm_val
-
-            # account for STORE energy/cycles handled elsewhere (this op only does load+add)
-            # update op counts:
-            self._op_counts["FUSED_LOAD_ADD"] = self._op_counts.get("FUSED_LOAD_ADD", 0) + 1
-            # energy, cycles, thermal already handled earlier in execute_op (top of function)
+            # Fused load add: rd = LOAD(addr) + imm
+            rd, addr, imm = operands
+            addr_val = self.get_val(addr)
+            self.check_memory_bounds(addr_val)
+            self.regs[rd] = self.memory[addr_val] + self.get_val(imm)
         elif mnemonic == "SAVE_DELTA":
             self.backup_regs = self.regs.copy()
         elif mnemonic == "RESTORE_DELTA":

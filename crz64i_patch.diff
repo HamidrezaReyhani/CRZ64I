@@ -1,0 +1,407 @@
+*** Begin Patch
+*** Add File: docs/isa.md
++<!--
++  Comprehensive ISA / calibration / fusion guidance for CRZ64I
++  Generated patch: add this file to document ISA semantics and cost model.
++-->
++# CRZ64I — ISA specification, fusion, and calibration guide
++
++## Overview
++
++This document lists the instruction set (mnemonics and operand formats), semantics,
++recommended **cycle cost** and **energy cost** entries (placeholders — should be
++calibrated on target hardware), fusion opportunities and semantic constraints,
++and recommended procedures for calibration and validation.
++
++> **IMPORTANT:** This file is a canonical reference for implementers, simulator
++> and compiler passes. Keep it updated when adding opcodes or changing semantics.
++
++---
++
++## Instruction formats
++
++All textual opcodes follow this general form:
++
++```
++MNEMONIC dst, src1, src2_or_imm
++LOAD rd, [addr]
++STORE rs, [addr]
++LABEL label
++BR_IF cond, label
++JMP label
++HALT
++FUSED_LOAD_ADD rd, addr, imm_or_reg [, meta...]
++```
++
++Operands can be registers (`r0..r63`), immediates or memory references `[addr]`.
++
++## Full opcode list (canonical)
++
++- ADD dst, src1, src2
++- SUB dst, src1, src2
++- MUL dst, src1, src2
++- DIV dst, src1, src2
++- LOAD dst, [addr]
++- STORE src, [addr]
++- JMP label
++- BR_IF cond, label
++- LABEL name
++- HALT
++- FUSED_LOAD_ADD dst, addr, imm/reg  — semantics: dst := load(addr); dst := dst + imm/reg (fused)
++
++... (extend with any vector/extended opcodes your language defines)
++
++## Semantics guarantees for FUSION
++
++- Fusion **must** be semantics-preserving. Examples of allowed fusion:
++  - LOAD rA, [x]; ADD rB, rA, imm  -> FUSED_LOAD_ADD rB, x, imm
++  - Fusion must preserve destination registers, flags and memory effects.
++  - Do **not** fuse when LOAD has side effects (e.g., volatile regions) or when aliasing/memory-dependencies are not provable safe.
++
++## Cost model (recommended fields)
++
++The simulator uses two orthogonal cost notions:
++
++1. **Cycles per opcode** (integer): how many *simulated cycles* the opcode consumes.
++2. **Energy per opcode** (Joules/op): measured energy consumption for the opcode on the target hardware.
++
++Example (reference):
++
++```
++cycles:
++  ADD: 1
++  SUB: 1
++  MUL: 3
++  DIV: 10
++  LOAD: 3
++  STORE: 3
++  FUSED_LOAD_ADD: 2
++
++energy:
++  ADD: 6e-08    # J/op (calibrate)
++  LOAD: 3.5e-07 # J/op (calibrate)
++  FUSED_LOAD_ADD: 4.1e-07
++```
++
++**Calibration note:** energy numbers are tiny — measure with RAPL/perf on target and use many iterations (N large).
++
++## Thermal model
++
++- Provide `heat_capacity` (J/K) and `thermal_resistance` (K/W).
++- On each executed opcode:
++  - compute `dt = cycles / sim_clock_hz`
++  - energy_joule = energy_per_op (J)
++  - power = energy_joule / dt
++  - integrate temperature: `dT = (power - (T - Tamb)/Rth) * (dt / C)`
++
++## Validation workflow
++
++1. For each opcode create a small microbenchmark that exercises only that opcode (N large).
++2. Measure energy with RAPL (or perf) and compute energy/op.
++3. Measure time and map `sim_clock_hz` (sim cycles <-> wall time).
++4. Update `src/crz/config.py`.
++5. Add unit tests in `tests/` that assert energy error <= 10% for each opcode (configurable).
++
++## Fusion checks
++
++- Implement unit tests verifying semantics of fused instructions vs unfused baseline;
++  e.g. run `examples/micro_add.crz` with fusion off/on and assert identical final state.
++
++## Notes on correctness
++
++- Keep simulator `get_state()` format stable (e.g., memory as dict of ints) to ensure test comparisons work.
++- Record `op_counts`, `energy_breakdown`, `wall_clock_s` in measurement tools and CSV results.
++
++---
++*End of ISA doc.*
++
+*** End Patch
+*** Add File: tools/op_calibrate.py
++#!/usr/bin/env python3
++"""
++Per-op calibration harness.
++
++Usage:
++  python3 tools/op_calibrate.py --op ADD --iters 20000000
++  python3 tools/op_calibrate.py --op LOAD --iters 2000000 --size 5000000
++
++This wrapper expects bench/micro_add and bench/micro_load to exist (see repo bench/).
++It reads RAPL (/sys/class/powercap) if available (sudo may be required) and falls back to perf.
++"""
++import argparse, subprocess, os, time
++
++def find_rapl():
++    for root, dirs, files in os.walk('/sys/class/powercap'):
++        for f in files:
++            if f == 'energy_uj':
++                return os.path.join(root, f)
++    return None
++
++def read_rapl(path):
++    try:
++        with open(path,'r') as fh:
++            return int(fh.read().strip())
++    except Exception:
++        return None
++
++def run_prog_and_measure(cmd):
++    rapl = find_rapl()
++    if rapl:
++        before = read_rapl(rapl)
++        t0 = time.time()
++        subprocess.run(cmd, check=True)
++        t1 = time.time()
++        after = read_rapl(rapl)
++        if before is None or after is None:
++            return None, t1 - t0
++        # energy in Joules
++        return (after - before) / 1e6, t1 - t0
++    else:
++        perf_cmd = ['perf','stat','-e','energy-pkg','--'] + cmd
++        p = subprocess.run(perf_cmd, capture_output=True, text=True)
++        for line in p.stderr.splitlines():
++            if 'energy' in line and 'pkg' in line:
++                try:
++                    val = float(line.strip().split()[0])
++                    return val, None
++                except:
++                    pass
++        return None, None
++
++def main():
++    ap = argparse.ArgumentParser()
++    ap.add_argument('--op', required=True, choices=['ADD','LOAD'])
++    ap.add_argument('--iters', type=int, default=1000000)
++    ap.add_argument('--size', type=int, default=5000000)
++    args = ap.parse_args()
++
++    if args.op == 'ADD':
++        cmd = ['./bench/micro_add', str(args.iters)]
++        J, wall = run_prog_and_measure(cmd)
++        print("energy(J):", J, "time(s):", wall, "ops:", args.iters)
++        if J:
++            print("energy per op (J):", J/float(args.iters))
++    elif args.op == 'LOAD':
++        cmd = ['./bench/micro_load', str(args.iters), str(args.size)]
++        J, wall = run_prog_and_measure(cmd)
++        print("energy(J):", J, "time(s):", wall, "loads:", args.iters)
++        if J:
++            print("energy per load (J):", J/float(args.iters))
++
++if __name__ == '__main__':
++    main()
++
+*** End Patch
+*** Add File: .github/workflows/ci_calibrate.yml
++name: CI - calibrate & smoke
++
++on:
++  workflow_dispatch:
++  push:
++    branches: [ main ]
++
++jobs:
++  calibrate:
++    runs-on: ubuntu-latest
++    steps:
++      - uses: actions/checkout@v4
++      - name: Set up Python
++        uses: actions/setup-python@v4
++        with:
++          python-version: '3.11'
++      - name: Install deps
++        run: |
++          python -m venv venv
++          . venv/bin/activate
++          pip install -U pip
++          pip install lark
++      - name: Run unit tests
++        run: |
++          . venv/bin/activate
++          PYTHONPATH=src python -m pytest tests/ -q
++      - name: Run synthetic calibrations (no RAPL in GH runners)
++        run: |
++          . venv/bin/activate
++          PYTHONPATH=src python tools/calibrate_cycles.py || true
++
+*** End Patch
+*** Modify File: src/crz/config.py
+@@
+     except FileNotFoundError:
+         # Default config
+         return {
+             "energy": {
+-                "ADD": 1.0,  # Update with measured energy per op in Joules, e.g., from calibrate_energy.py
+-                "SUB": 1.0,
+-                "MUL": 2.0,
+-                "DIV": 3.0,
+-                "LOAD": 0.5,  # Update with measured per load
+-                "STORE": 0.5,
+-                "JMP": 0.1,
+-                "BR_IF": 0.25,
+-                "LABEL": 0.0,
+-                "BRANCH": 0.3,
+-                "FUSED_LOAD_ADD": 3.5e-07,  # LOAD + ADD energy
++                "ADD": 6e-08,
++                "SUB": 6e-08,
++                "MUL": 1.2e-06,
++                "DIV": 3.0e-06,
++                "LOAD": 3.5e-07,
++                "STORE": 3.5e-07,
++                "JMP": 1e-08,
++                "BR_IF": 2.5e-07,
++                "LABEL": 0.0,
++                "BRANCH": 3.0e-07,
++                "FUSED_LOAD_ADD": 4.1e-07,
+             },
+             "thermal": {
+                 "base_temp": 25.0,
+                 "heat_factor": 0.1,
+                 "heat_capacity": 100.0,  # J/K, adjust based on hardware
+                 "thermal_resistance": 0.5,  # K/W, adjust based on hardware
+             },
++            # cycles per opcode (sim-cycle cost). Calibrate per-target.
++            "cycles": {
++                "ADD": 1,
++                "SUB": 1,
++                "MUL": 3,
++                "DIV": 10,
++                "LOAD": 3,
++                "STORE": 3,
++                "JMP": 1,
++                "BR_IF": 2,
++                "LABEL": 0,
++                "BRANCH": 1,
++                "FUSED_LOAD_ADD": 2
++            },
+             "cores": 4,
+-            "energy_unit": 1e-9,  # 1 unit == 1 nJ, but now energy values are in Joules
+-            "sim_clock_hz": 2.0e8,  # Measured from calibrate_cycles.py, example value
++            "energy_unit": 1.0,  # energies are expressed in Joules
++            "sim_clock_hz": 17183382.42,  # measured example; calibrate per-host
+             "memory_limit": None,  # optional hard cap, or None for no limit
+         }
+@@
+-        self.energy = config_dict["energy"]
+-        self.thermal = config_dict["thermal"]
+-        self.cores = config_dict["cores"]
+-        self.energy_unit = config_dict.get("energy_unit", 1.0)
+-        self.sim_clock_hz = config_dict.get("sim_clock_hz", 17183382.42)
+-        self.memory_limit = config_dict.get("memory_limit", None)
++        self.energy = config_dict["energy"]
++        self.thermal = config_dict["thermal"]
++        self.cycles = config_dict.get("cycles", {})
++        self.cores = config_dict["cores"]
++        self.energy_unit = config_dict.get("energy_unit", 1.0)
++        self.sim_clock_hz = config_dict.get("sim_clock_hz", 17183382.42)
++        self.memory_limit = config_dict.get("memory_limit", None)
+*** End Patch
+*** Modify File: src/crz/simulator/simulator.py
+@@
+ class Simulator:
+     def __init__(self, config: Config = None):
+         self.config = config or Config()
+         self.regs: dict = {f"r{i}": 0 for i in range(64)}
+         self.memory: list = []
+         self.flags: dict = {}
+         self.energy_used = 0.0
+         self.thermal_map: dict = {}
+-        self.sandbox_allow_io = False
+-        self.sandbox_allow_dma = False
+-        self.cycles = 0
+-        self._op_counts: Dict[str, int] = {}
++        self.sandbox_allow_io = False
++        self.sandbox_allow_dma = False
++        self.cycles = 0  # simulated cycles
++        self.wall_clock_s = 0.0  # simulated wall-clock (seconds)
++        self._op_counts: Dict[str, int] = {}
+@@
+     def check_memory_bounds(self, addr: int):
+         """Check and auto-grow memory bounds."""
+         # reject negative addresses
+         if addr < 0:
+             raise ValueError(f"Memory access out of bounds: negative address {addr}")
+ 
+         # optional max guard if config has memory_limit
+         mem_limit = getattr(self.config, 'memory_limit', None)
+         if mem_limit is not None and addr >= mem_limit:
+             raise ValueError(f"Memory access out of bounds: requested {addr} >= memory_limit {mem_limit}")
+ 
+         # auto-grow: extend underlying memory list to include addr
+         if addr >= len(self.memory):
+             needed = addr - len(self.memory) + 1
+             # keep growth deterministic and efficient
+             self.memory.extend([0] * needed)
+@@
+     def execute_op(self, mnemonic: str, operands: List[str]):
+         """Execute a single operation."""
+-        energy = self.config.energy.get(mnemonic, 0.0)
+-        self.energy_used += energy * self.config.energy_unit
+-        self.update_thermal_advanced(mnemonic, energy)
+-        self.cycles += 1
++        # --- compute per-op energy (Joules) ---
++        energy_per_op = self.config.energy.get(mnemonic, 0.0)
++        energy_joule = energy_per_op * getattr(self.config, "energy_unit", 1.0)
++
++        # --- cycles cost ---
++        cost_cycles = self.config.cycles.get(mnemonic, 1)
++        self.cycles += cost_cycles
++
++        # --- wall-clock time for this opcode ---
++        sim_clock_hz = getattr(self.config, "sim_clock_hz", 1.0)
++        dt = cost_cycles / float(sim_clock_hz) if sim_clock_hz > 0.0 else 0.0
++        self.wall_clock_s += dt
++
++        # --- accumulate energy and thermal update ---
++        self.energy_used += energy_joule
++        # call advanced thermal model with dt if available
++        if hasattr(self, "update_thermal_advanced"):
++            try:
++                self.update_thermal_advanced(mnemonic, energy_joule, dt=dt, cycles=cost_cycles)
++            except TypeError:
++                self.update_thermal_advanced(mnemonic, energy_joule)
+@@
+         if mnemonic == "ADD":
+             rd, rs1, rs2 = operands
+             self.regs[rd] = self.get_val(rs1) + self.get_val(rs2)
+@@
+     def update_thermal_advanced(self, mnemonic: str, energy_joule: float, dt: float = None, cycles: int = None):
+         """Update thermal hotspots using physics-based heating over duration dt (seconds).
+         energy_joule: energy consumed in this opcode (Joules).
+-        dt: duration in seconds (optional). If not provided, will attempt to compute using cycles and config.sim_clock_hz.
++        dt: duration in seconds (optional). If not provided, will attempt to compute using cycles and config.sim_clock_hz.
+         """
+         component = "alu" if mnemonic in ["ADD", "SUB", "MUL", "DIV", "FUSED_LOAD_ADD"] else "control"
+         current_temp = self.thermal_map.get(component, self.config.thermal.get("base_temp", 25.0))
+         ambient_temp = self.config.thermal.get("base_temp", 25.0)
+         heat_capacity = self.config.thermal.get("heat_capacity", 100.0)  # J/K
+         thermal_resistance = self.config.thermal.get("thermal_resistance", 0.5)  # K/W
+-        if dt is None:
+-            if cycles is not None:
+-                sim_clock_hz = getattr(self.config, 'sim_clock_hz', 1.0)
+-                dt = cycles / float(sim_clock_hz) if sim_clock_hz > 0 else 0.0
+-            else:
+-                # fallback small dt
+-                dt = 0.0
+-        # instantaneous power over dt (avoid div by zero)
+-        power_w = (energy_joule / dt) if dt and dt > 0.0 else 0.0
+-        # Newton cooling + heating: dT = (power - (T - ambient)/R) * (dt / C)
+-        dT = (power_w - (current_temp - ambient_temp) / thermal_resistance) * (dt / heat_capacity) if dt and dt > 0.0 else 0.0
++        if dt is None:
++            if cycles is not None:
++                sim_clock_hz = getattr(self.config, 'sim_clock_hz', 1.0)
++                dt = cycles / float(sim_clock_hz) if sim_clock_hz > 0 else 0.0
++            else:
++                dt = 0.0
++        power_w = (energy_joule / dt) if dt and dt > 0.0 else 0.0
++        dT = (power_w - (current_temp - ambient_temp) / thermal_resistance) * (dt / heat_capacity) if dt and dt > 0.0 else 0.0
+         new_temp = current_temp + dT
+         self.thermal_map[component] = new_temp
+@@
+     def get_state(self):
+         """Get current simulator state for semantic equivalence checks."""
+-        return {"regs": dict(self.regs), "memory": dict(self.memory)}
++        # Present memory as a dict {addr: value} to remain compatible with tests
++        return {"regs": dict(self.regs), "memory": {str(i): v for i, v in enumerate(self.memory)}}
+*** End Patch
+

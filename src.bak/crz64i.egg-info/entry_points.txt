@@ -1,0 +1,3 @@
+[console_scripts]
+crzc = src.crz.cli.compiler_cli:main
+crzsim = src.crz.cli.simulator_cli:main

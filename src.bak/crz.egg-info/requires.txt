@@ -1,0 +1,4 @@
+lark-parser
+pytest
+typing_extensions
+rich

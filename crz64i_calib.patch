@@ -1,0 +1,182 @@
+From 26302ed49615bcd7eafa44f2acb640eea9621b3a Mon Sep 17 00:00:00 2001
+From: crzc <crzc@crzc>
+Date: Mon, 13 Oct 2025 12:32:50 +0330
+Subject: [PATCH] Add calibration tools and update config with measured energy
+ values
+
+- Add tools/calibrate_energy_perf.sh: Script for measuring energy consumption of operations using perf or RAPL
+- Add tools/update_config_from_measurements.py: Safe script to update config.py with measured values
+- Update src/crz/config.py with measured energy per op: ADD=4.5e-08 J/op, LOAD=4.0e-07 J/op, STORE=4.0e-07 J/op, sim_clock_hz=343180684.9654721 Hz
+---
+ src/crz/config.py                        | 14 +++---
+ tools/calibrate_energy_perf.sh           | 64 ++++++++++++++++++++++++
+ tools/update_config_from_measurements.py | 41 +++++++++++++++
+ 3 files changed, 112 insertions(+), 7 deletions(-)
+ create mode 100755 tools/calibrate_energy_perf.sh
+ create mode 100755 tools/update_config_from_measurements.py
+
+diff --git a/src/crz/config.py b/src/crz/config.py
+index bde621a..4203148 100644
+--- a/src/crz/config.py
++++ b/src/crz/config.py
+@@ -12,12 +12,12 @@ def load_config() -> Dict[str, Any]:
+         # Default config
+         return {
+             "energy": {
+-                "ADD": 6e-08,  # Updated with measured energy per op in Joules
++                "ADD": 4.5e-08,  # Updated with measured energy per op in Joules
+                 "SUB": 6e-08,
+                 "MUL": 1.2e-6,
+                 "DIV": 3.0e-6,
+-                "LOAD": 3.5e-07,  # Updated with measured per load
+-                "STORE": 3.5e-07,
++                "LOAD": 4.0000000000000003e-07,  # Updated with measured per load
++                "STORE": 4.0000000000000003e-07,
+                 "JMP": 1e-8,
+                 "BR_IF": 2.5e-7,
+                 "LABEL": 0.0,
+@@ -32,12 +32,12 @@ def load_config() -> Dict[str, Any]:
+             },
+             # real-time cycle cost model: cycles per opcode (sim cycles)
+             "cycles": {
+-                "ADD": 1,
++                "ADD": 4.5e-08,
+                 "SUB": 1,
+                 "MUL": 3,
+                 "DIV": 10,
+-                "LOAD": 3,
+-                "STORE": 3,
++                "LOAD": 4.0000000000000003e-07,
++                "STORE": 4.0000000000000003e-07,
+                 "JMP": 1,
+                 "BR_IF": 2,
+                 "LABEL": 0,
+@@ -46,7 +46,7 @@ def load_config() -> Dict[str, Any]:
+             },
+             "cores": 4,
+             "energy_unit": 1.0,  # Updated to Joules
+-            "sim_clock_hz": 17183382.42,  # Measured from calibrate_cycles.py
++            "sim_clock_hz": 343180684.9654721,  # Measured from calibrate_cycles.py
+             "memory_limit": None,  # optional hard cap, or None for no limit
+         }
+ 
+diff --git a/tools/calibrate_energy_perf.sh b/tools/calibrate_energy_perf.sh
+new file mode 100755
+index 0000000..23ea6be
+--- /dev/null
++++ b/tools/calibrate_energy_perf.sh
+@@ -0,0 +1,64 @@
++#!/usr/bin/env bash
++set -euo pipefail
++OP=$1        # "ADD" or "LOAD"
++ITERS=$2
++RUNS=${3:-7}
++PIN=${4:-0}
++SLEEP=${5:-1}
++
++bench="./bench/micro_${OP,,}"
++if [ ! -x "$bench" ]; then
++  echo "bench not found: $bench" >&2
++  exit 1
++fi
++
++rapl_path=$(find /sys/class/powercap -type f -name energy_uj 2>/dev/null | head -n1 || true)
++echo "rapl_path: ${rapl_path:-<none>}"
++
++tmpfile=$(mktemp)
++trap 'rm -f "$tmpfile"' EXIT
++
++measure_perf() {
++  sudo perf stat -e power/energy-pkg/ -- taskset -c $PIN "$bench" "$ITERS" 2>&1 | \
++    awk '/power\/energy-pkg/ { gsub(/,/,"",$1); print $1 }'
++}
++
++for i in $(seq 1 $RUNS); do
++  echo "run $i / $RUNS ..."
++  if [ -n "$rapl_path" ]; then
++    before=$(sudo cat "$rapl_path" 2>/dev/null || echo "")
++    taskset -c $PIN "$bench" "$ITERS" >/dev/null
++    after=$(sudo cat "$rapl_path" 2>/dev/null || echo "")
++    if [[ "$before" =~ ^[0-9]+$ && "$after" =~ ^[0-9]+$ ]]; then
++      delta_j=$(python3 - <<PY
++print((int($after) - int($before)) / 1e6)
++PY
++)
++      echo "$delta_j" >> "$tmpfile"
++      echo "  energy (J) = $delta_j"
++    else
++      v=$(measure_perf)
++      echo "$v" >> "$tmpfile"
++      echo "  perf energy (J) = $v"
++    fi
++  else
++    v=$(measure_perf)
++    echo "$v" >> "$tmpfile"
++    echo "  perf energy (J) = $v"
++  fi
++  sleep $SLEEP
++done
++
++# compute median and energy per op
++python3 - <<PY
++import sys, statistics
++vals = [float(x.strip()) for x in open("$tmpfile").read().splitlines() if x.strip()]
++if not vals:
++    print("NO_SAMPLES")
++    sys.exit(1)
++med = statistics.median(vals)
++print("MEDIAN_J", med)
++IT = $ITERS
++print("ENERGY_PER_OP_J", med / IT)
++print("SAMPLES:", vals)
++PY
+diff --git a/tools/update_config_from_measurements.py b/tools/update_config_from_measurements.py
+new file mode 100755
+index 0000000..e7cdcec
+--- /dev/null
++++ b/tools/update_config_from_measurements.py
+@@ -0,0 +1,41 @@
++#!/usr/bin/env python3
++import argparse, re
++from pathlib import Path
++
++ap = argparse.ArgumentParser()
++ap.add_argument('--add', type=float, help='energy per ADD (J)')
++ap.add_argument('--load', type=float, help='energy per LOAD (J)')
++ap.add_argument('--store', type=float, help='energy per STORE (J)')
++ap.add_argument('--fused', type=float, help='energy per FUSED_LOAD_ADD (J)')
++ap.add_argument('--sim_clock_hz', type=float, help='sim_clock_hz')
++args = ap.parse_args()
++
++p = Path('src/crz/config.py')
++if not p.exists():
++    raise SystemExit("src/crz/config.py not found")
++text = p.read_text()
++bak = p.with_suffix('.py.bak')
++if not bak.exists():
++    bak.write_text(text)
++
++def replace_key(key, val, txt):
++    if val is None:
++        return txt
++    pattern = rf'("{key}"\s*:\s*)([0-9eE+\-\.]+)'
++    return re.sub(pattern, lambda m: m.group(1) + repr(val), txt)
++
++repls = {
++    "ADD": args.add,
++    "LOAD": args.load,
++    "STORE": args.store,
++    "FUSED_LOAD_ADD": args.fused
++}
++
++for k,v in repls.items():
++    text = replace_key(k, v, text)
++
++if args.sim_clock_hz is not None:
++    text = re.sub(r'("sim_clock_hz"\s*:\s*)[0-9eE+\-\.]+', lambda m: m.group(1) + repr(args.sim_clock_hz), text)
++
++p.write_text(text)
++print("Updated src/crz/config.py (backup at {})".format(bak))
+-- 
+2.51.0
+

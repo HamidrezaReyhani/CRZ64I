@@ -30,20 +30,6 @@ def load_config() -> Dict[str, Any]:
                 "heat_capacity": 100.0,  # J/K, adjust based on hardware
                 "thermal_resistance": 0.5,  # K/W, adjust based on hardware
             },
-            # real-time cycle cost model: cycles per opcode (sim cycles)
-            "cycles": {
-                "ADD": 1,
-                "SUB": 1,
-                "MUL": 3,
-                "DIV": 10,
-                "LOAD": 3,
-                "STORE": 3,
-                "JMP": 1,
-                "BR_IF": 2,
-                "LABEL": 0,
-                "BRANCH": 1,
-                "FUSED_LOAD_ADD": 2   # cheaper than LOAD(3)+ADD(1)=4
-            },
             "cores": 4,
             "energy_unit": 1.0,  # Updated to Joules
             "sim_clock_hz": 17183382.42,  # Measured from calibrate_cycles.py
@@ -59,7 +45,6 @@ class Config:
             config_dict = load_config()
         self.energy = config_dict["energy"]
         self.thermal = config_dict["thermal"]
-        self.cycles = config_dict.get("cycles", {})
         self.cores = config_dict["cores"]
         self.energy_unit = config_dict.get("energy_unit", 1.0)
         self.sim_clock_hz = config_dict.get("sim_clock_hz", 17183382.42)

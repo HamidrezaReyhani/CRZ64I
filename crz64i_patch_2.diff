@@ -1,0 +1,115 @@
+*** Begin Patch
+*** Update File: src/crz/simulator/simulator.py
+@@
+     def __init__(self, config: Config = None):
+         self.config = config or Config()
+         self.regs: Dict[str, int] = {}
+-        self.sandbox_allow_io = False
+-        self.sandbox_allow_dma = False
+-        self.cycles = 0
++        self.sandbox_allow_io = False
++        self.sandbox_allow_dma = False
++        self.cycles = 0                  # simulated cycles counter
++        self.wall_clock_s = 0.0          # accumulated simulated wall-clock (seconds)
+         self._op_counts: Dict[str, int] = {}
+@@
+     def check_memory_bounds(self, addr):
+-    def check_memory_bounds(self, addr: int):
+-        """Check and auto-grow memory bounds."""
+-        # reject negative addresses
+-        if addr < 0:
+-            raise ValueError(f"Memory access out of bounds: negative address {addr}")
+-
+-        # optional max guard if config has memory_limit
+-        mem_limit = getattr(self.config, 'memory_limit', None)
+-        if mem_limit is not None and addr >= mem_limit:
+-            raise ValueError(f"Memory access out of bounds: requested {addr} >= memory_limit {mem_limit}")
+-
+-        # auto-grow: extend underlying memory list to include addr
+-        if addr >= len(self.memory):
+-            needed = addr - len(self.memory) + 1
+-            # keep growth deterministic and efficient
+-            self.memory.extend([0] * needed)
++    def check_memory_bounds(self, addr: int):
++        """Check and auto-grow memory bounds."""
++        if addr < 0:
++            raise ValueError(f"Memory access out of bounds: negative address {addr}")
++        mem_limit = getattr(self.config, 'memory_limit', None)
++        if mem_limit is not None and addr >= mem_limit:
++            raise ValueError(f"Memory access out of bounds: requested {addr} >= memory_limit {mem_limit}")
++        if addr >= len(self.memory):
++            needed = addr - len(self.memory) + 1
++            self.memory.extend([0] * needed)
+@@
+     def execute_op(self, mnemonic: str, operands: List[str]):
+         """Execute a single operation."""
+-        energy = self.config.energy.get(mnemonic, 0.0)
+-        self.energy_used += energy * self.config.energy_unit
+-        self.update_thermal_advanced(mnemonic, energy)
+-        self.cycles += 1
++        # --- per-op energy accounting ---
++        energy_per_op = self.config.energy.get(mnemonic, 0.0)   # value in config units
++        energy_joule = energy_per_op * getattr(self.config, "energy_unit", 1.0)
++
++        # --- cycles cost model ---
++        cost_cycles = self.config.cycles.get(mnemonic, 1)
++        self.cycles += cost_cycles
++        sim_clock_hz = getattr(self.config, "sim_clock_hz", 1.0)
++        dt = cost_cycles / float(sim_clock_hz) if sim_clock_hz > 0 else 0.0
++        self.wall_clock_s += dt
++
++        # accumulate energy (Joules)
++        self.energy_used += energy_joule
++
++        # update thermal using duration dt and energy_joule
++        try:
++            self.update_thermal_advanced(mnemonic, energy_joule, dt=dt, cycles=cost_cycles)
++        except TypeError:
++            # fallback to older signature if present
++            self.update_thermal_advanced(mnemonic, energy_joule)
+@@
+-    def update_thermal_advanced(self, mnemonic: str, energy: float):
+-        """Update thermal hotspots with advanced model."""
+-        component = "alu" if mnemonic in ["ADD", "SUB", "MUL", "DIV"] else "control"
+-        current_temp = self.thermal_map.get(component, self.config.thermal.get("base_temp", 25.0))
+-        ambient_temp = self.config.thermal.get("base_temp", 25.0)
+-        heat_capacity = self.config.thermal.get("heat_capacity", 100.0)  # J/K
+-        thermal_resistance = self.config.thermal.get("thermal_resistance", 0.5)  # K/W
+-        sim_clock_hz = getattr(self.config, 'sim_clock_hz', 2.0e8)
+-        dt = 1.0 / sim_clock_hz  # Time per cycle in seconds
+-        energy_joule = energy * self.config.energy_unit  # Convert to Joules
+-        power_w = energy_joule / dt  # Watts
+-        # Newton cooling + heating: dT = (power - (T - ambient)/R) * (dt / C)
+-        dT = (power_w - (current_temp - ambient_temp) / thermal_resistance) * (dt / heat_capacity)
+-        new_temp = current_temp + dT
+-        self.thermal_map[component] = new_temp
++    def update_thermal_advanced(self, mnemonic: str, energy_joule: float, dt: float = None, cycles: int = None):
++        """Update thermal hotspots using physics-based heating over duration dt (seconds).
++        energy_joule: consumed energy (J) for this operation.
++        dt: duration in seconds (optional). If not provided, attempt to compute using cycles and sim_clock_hz.
++        """
++        component = "alu" if mnemonic in ["ADD", "SUB", "MUL", "DIV", "FUSED_LOAD_ADD"] else "control"
++        current_temp = self.thermal_map.get(component, self.config.thermal.get("base_temp", 25.0))
++        ambient_temp = self.config.thermal.get("base_temp", 25.0)
++        heat_capacity = self.config.thermal.get("heat_capacity", 100.0)
++        thermal_resistance = self.config.thermal.get("thermal_resistance", 0.5)
++        if dt is None:
++            if cycles is not None:
++                sim_clock_hz = getattr(self.config, 'sim_clock_hz', 1.0)
++                dt = cycles / float(sim_clock_hz) if sim_clock_hz > 0 else 0.0
++            else:
++                dt = 0.0
++        power_w = (energy_joule / dt) if dt and dt > 0.0 else 0.0
++        dT = (power_w - (current_temp - ambient_temp) / thermal_resistance) * (dt / heat_capacity) if dt and dt > 0.0 else 0.0
++        new_temp = current_temp + dT
++        self.thermal_map[component] = new_temp
+@@
+-    def get_state(self):
+-        """Get current simulator state for semantic equivalence checks."""
+-        return {"regs": dict(self.regs), "memory": dict(self.memory)}
++    def get_state(self):
++        """Get current simulator state for semantic equivalence checks."""
++        # return memory as mapping to preserve indices in comparisons
++        return {"regs": dict(self.regs), "memory": {str(i): v for i, v in enumerate(self.memory)}}
+*** End Patch
+

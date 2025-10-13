@@ -1,0 +1,74 @@
+*** Begin Patch
+*** Update File: src/crz/config.py
+@@
+-    except FileNotFoundError:
+-        # Default config
+-        return {
+-            "energy": {
+-                "ADD": 1.0,  # Update with measured energy per op in Joules, e.g., from calibrate_energy.py
+-                "SUB": 1.0,
+-                "MUL": 2.0,
+-                "DIV": 3.0,
+-                "LOAD": 0.5,  # Update with measured per load
+-                "STORE": 0.5,
+-                "JMP": 0.1,
+-                "BR_IF": 0.25,
+-                "LABEL": 0.0,
+-                "BRANCH": 0.3,
+-            },
+-            "thermal": {
+-                "base_temp": 25.0,
+-                "heat_factor": 0.1,
+-                "heat_capacity": 100.0,  # J/K, adjust based on hardware
+-                "thermal_resistance": 0.5,  # K/W, adjust based on hardware
+-            },
+-            "cores": 4,
+-            "energy_unit": 1e-9,  # 1 unit == 1 nJ, but now energy values are in Joules
+-            "sim_clock_hz": 2.0e8,  # Measured from calibrate_cycles.py, example value
+-            "memory_limit": None,  # optional hard cap, or None for no limit
+-        }
++    except FileNotFoundError:
++        # Default config (calibrated defaults; replace after running tools/op_calibrate.py)
++        return {
++            "energy": {
++                # per-op energy in Joules (example calibrated values; update with tools/op_calibrate.py)
++                "ADD": 6e-08,
++                "SUB": 6e-08,
++                "MUL": 1.2e-06,
++                "DIV": 3.0e-06,
++                "LOAD": 3.5e-07,
++                "STORE": 3.5e-07,
++                "JMP": 1e-08,
++                "BR_IF": 2.5e-07,
++                "LABEL": 0.0,
++                "BRANCH": 3.0e-07,
++                "FUSED_LOAD_ADD": 4.1e-07
++            },
++            "thermal": {
++                "base_temp": 25.0,
++                "heat_factor": 0.1,
++                "heat_capacity": 100.0,      # J/K (adjust per platform)
++                "thermal_resistance": 0.5,   # K/W (adjust per platform)
++            },
++            # cycles cost (simulated cycles per opcode) used to map sim cycles -> wall time
++            "cycles": {
++                "ADD": 1,
++                "SUB": 1,
++                "MUL": 3,
++                "DIV": 10,
++                "LOAD": 3,
++                "STORE": 3,
++                "JMP": 1,
++                "BR_IF": 2,
++                "LABEL": 0,
++                "BRANCH": 1,
++                "FUSED_LOAD_ADD": 2
++                # NOTE: add other opcodes here (fill all 64 opcodes with measured/estimated cycles)
++            },
++            "cores": 4,
++            "energy_unit": 1.0,            # energies in this config are in Joules
++            "sim_clock_hz": 17183382.42,   # measured value (replace after calibrate_cycles)
++            "memory_limit": None,
++        }
+*** End Patch
+

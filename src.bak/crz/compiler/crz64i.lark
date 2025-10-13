@@ -1,0 +1,90 @@
+// CRZ64I Grammar v3
+%import common.WS
+%import common.CDATA
+%ignore WS
+%ignore COMMENT
+
+COMMENT: /\/\/[^\n]*/
+
+REGISTER: /r\d+/ | /v\d+/
+MNEMONIC: /[A-Z_][A-Z0-9_]*/
+NAME: /[a-zA-Z_][a-zA-Z0-9_]*/
+NUMBER: /\d+/
+STRING: /"[^"]*"/
+INT: /\d+/
+CONDITION: /LT|GT|EQ|NE|LE|GE/
+SEMICOLON: ";"
+COMMA: ","
+LBRACE: "{"
+RBRACE: "}"
+LPAREN: "("
+RPAREN: ")"
+
+HASH: "#"
+ASSIGN: "="
+LBRA: "["
+RBRA: "]"
+
+PLUS: "+"
+MINUS: "-"
+MUL: "*"
+DIV: "/"
+MOD: "%"
+LSHIFT: "<<"
+RSHIFT: ">>"
+BITAND: "&"
+BITOR: "|"
+BITXOR: "^"
+AND: "&&"
+OR: "||"
+EQ: "=="
+NE: "!="
+LT: "<"
+LE: "<="
+GT: ">="
+GE: ">="
+NOT: "!"
+
+
+
+ARROW: "->"
+
+FN: "fn"
+LET: "let"
+RETURN: "return"
+IF: "if"
+ELSE: "else"
+FOR: "for"
+IN: "in"
+
+program: top_level_declaration*
+top_level_declaration: attribute_list? (function_declaration | instruction | label | assignment)
+attribute_list: attribute*
+attribute: HASH LBRA NAME [ASSIGN /[^]]+/ ] RBRA -> attribute
+return_type: ARROW type
+function_declaration: FN NAME LPAREN parameter_list? RPAREN return_type? block
+parameter_list: parameter (COMMA parameter)*
+parameter: NAME [":" type]
+type: NAME | vector_type
+vector_type: "vec" "<" INT COMMA type ">"
+block: LBRACE statement* RBRACE
+statement: attribute_list? (instruction | local_declaration | return_statement | label | if_statement | loop_statement | assignment)
+local_declaration: LET NAME [":" type] "=" expression SEMICOLON
+return_statement: RETURN expression? SEMICOLON
+assignment: NAME "=" expression SEMICOLON
+label: NAME ":"
+if_statement: IF expression block [ELSE block]
+loop_statement: FOR NAME IN range_expression block
+range_expression: expression ".." expression
+expression: primary_expression (BINARY_OP primary_expression)*
+BINARY_OP: "+" | "-" | "*" | "/" | "%" | "<<" | ">>" | "&" | "|" | "^" | "&&" | "||" | "==" | "!=" | "<" | "<=" | ">" | ">="
+unary_expression: primary_expression | ( MINUS | NOT ) unary_expression
+primary_expression: NAME | NUMBER | STRING | REGISTER | LPAREN expression RPAREN | function_call | memory_reference
+function_call: NAME LPAREN argument_list? RPAREN
+argument_list: expression (COMMA expression)*
+memory_reference: LBRA expression RBRA
+instruction: MNEMONIC operand_list? SEMICOLON -> instruction
+operand_list: operand (COMMA operand)*
+operand: REGISTER | immediate | memory_reference | label_reference | CONDITION
+immediate: NUMBER | STRING
+label_reference: NAME

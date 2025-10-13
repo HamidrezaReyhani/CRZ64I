@@ -1,0 +1,262 @@
+{
+  "ADD": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "SUB": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "MUL": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "DIV": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "AND": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "OR": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "XOR": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "SHL": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "SHR": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "POPCNT": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "LOAD": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "STORE": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "FADD": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "FSUB": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "FMUL": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "FMA": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "VADD": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "VMUL": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "BR_IF": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "NOP": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "HALT": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "JMP": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "CALL": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "RET": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "BR": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "YIELD": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "TRAP": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "LOADF": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "STOREF": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "ATOMIC_INC": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "DMA_START": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "CACHE_LOCK": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "PREFETCH": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "VSTORE": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "VLOAD": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "VSUB": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "VDOT32": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "VSHL": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "VSHR": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "VFMA": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "VREDUCE_SUM": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "LOCK": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "UNLOCK": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "CMPXCHG": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "FENCE": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "SET_PWR_MODE": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "GET_PWR_STATE": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "THERM_READ": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "SET_THERM_POLICY": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "SLEEP": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "FAST_PATH_ENTER": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "SAVE_DELTA": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "RESTORE_DELTA": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "REV_ADD": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "REV_SWAP": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "ADIABATIC_START": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "ADIABATIC_STOP": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "CRC32": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "HASH_INIT": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "HASH_UPDATE": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "HASH_FINAL": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "PROFILE_START": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "PROFILE_STOP": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "TRACE": {
+    "energy_J": null,
+    "cycles": null
+  },
+  "EXTENSION": {
+    "energy_J": null,
+    "cycles": null
+  }
+}

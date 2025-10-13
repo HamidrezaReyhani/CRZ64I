@@ -1,0 +1,10 @@
+#[fusion]
+#[realtime]
+fn gemm(A, B, C) {
+    // Simplified GEMM: C = A * B
+    // Assume matrices in memory
+    LOAD R0, [A];
+    LOAD R1, [B];
+    MUL R2, R0, R1;
+    STORE R2, [C];
+}

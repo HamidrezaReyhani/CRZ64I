@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build
+        pip install -e .
+        pip install black mypy
+
+    - name: Lint with black
+      run: black --check .
+
+    - name: Type check with mypy
+      run: mypy src
+
+    - name: Run tests
+      run: pytest
+
+    - name: Run bench smoke (optional)
+      run: if [ -f bench/microbench.py ]; then python -m bench.microbench --smoke; fi
+      continue-on-error: true
+
+    - name: Build wheel
+      run: python -m build

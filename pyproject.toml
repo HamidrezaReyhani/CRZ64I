@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools", "wheel", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "crz"
+version = "0.1.0"
+description = "CRZ64I Python implementation"
+authors = [{name = "Blackbox AI"}]
+license = {text = "OpenLogic Permissive License"}
+requires-python = ">=3.11"
+dependencies = [
+    "lark-parser",
+    "pytest",
+    "typing_extensions",
+    "rich",
+]
+
+[project.scripts]
+crzc = "src.crz.cli.compiler_cli:main"
+crzsim = "src.crz.cli.simulator_cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.mypy]
+strict = true
+python_version = "3.11"
+
+[tool.black]
+line-length = 88

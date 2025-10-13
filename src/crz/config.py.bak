@@ -1,0 +1,51 @@
+"""CRZ64I configuration loader."""
+
+import json
+from typing import Dict, Any
+
+def load_config() -> Dict[str, Any]:
+    """Load configuration from config.json or return defaults."""
+    try:
+        with open("config.json", "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        # Default config
+        return {
+            "energy": {
+                "ADD": 6e-08,  # Updated with measured energy per op in Joules
+                "SUB": 6e-08,
+                "MUL": 1.2e-6,
+                "DIV": 3.0e-6,
+                "LOAD": 3.5e-07,  # Updated with measured per load
+                "STORE": 3.5e-07,
+                "JMP": 1e-8,
+                "BR_IF": 2.5e-7,
+                "LABEL": 0.0,
+                "BRANCH": 3.0e-7,
+                "FUSED_LOAD_ADD": 4.1e-07,  # LOAD + ADD energy
+            },
+            "thermal": {
+                "base_temp": 25.0,
+                "heat_factor": 0.1,
+                "heat_capacity": 100.0,  # J/K, adjust based on hardware
+                "thermal_resistance": 0.5,  # K/W, adjust based on hardware
+            },
+            "cores": 4,
+            "energy_unit": 1.0,  # Updated to Joules
+            "sim_clock_hz": 17183382.42,  # Measured from calibrate_cycles.py
+            "memory_limit": None,  # optional hard cap, or None for no limit
+        }
+
+
+class Config:
+    """Configuration class."""
+
+    def __init__(self, config_dict=None):
+        if config_dict is None:
+            config_dict = load_config()
+        self.energy = config_dict["energy"]
+        self.thermal = config_dict["thermal"]
+        self.cores = config_dict["cores"]
+        self.energy_unit = config_dict.get("energy_unit", 1.0)
+        self.sim_clock_hz = config_dict.get("sim_clock_hz", 17183382.42)
+        self.memory_limit = config_dict.get("memory_limit", None)

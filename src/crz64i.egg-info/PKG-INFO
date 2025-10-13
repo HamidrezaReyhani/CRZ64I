@@ -1,0 +1,13 @@
+Metadata-Version: 2.4
+Name: crz64i
+Version: 0.1.0
+Summary: CRZ64I Python implementation
+Author: Blackbox AI
+License: OpenLogic Permissive License
+Requires-Python: >=3.11
+License-File: LICENSE
+Requires-Dist: lark-parser
+Requires-Dist: pytest
+Requires-Dist: typing_extensions
+Requires-Dist: rich
+Dynamic: license-file

@@ -1,0 +1,4 @@
+fn roundtrip_test() {
+    ADD R0, R1, R2;
+    ADD R3, R0, R4;
+}

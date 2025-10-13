@@ -1,148 +1,157 @@
 # simulator.py
-# CRZ64I Simulator: Cycle-accurate execution with energy model and reversible support
-
-from instructions import INSTRUCTIONS, NUM_REGS, NUM_VREGS
+# Minimal CRZSimulator PoC: executes compiler AST sequentially.
+# Keeps simple models: cycles/op, energy per cycle, temperature delta.
+import math, time
 
 class CRZSimulator:
     def __init__(self):
-        self.regs = [0] * NUM_REGS
-        self.vregs = [[0]*32 for _ in range(NUM_VREGS)]  # Vector regs, 32 elements each
-        self.memory = [0] * 1024  # Simple memory
+        # regs simple integer regs R0..R31 and vector regs not implemented
+        self.regs = {i:0 for i in range(32)}
         self.pc = 0
         self.cycles = 0
         self.energy = 0.0
-        self.temperature = 0.0  # Thermal model
-        self.halted = False
-        self.reversible_log = []  # For reversible execution
+        self.temp = 20.0  # ambient base
+        # per-op costs (cycles, energy per cycle Joules)
+        self.costs = {
+            'ADD':(1,0.3),'SUB':(1,0.3),'MUL':(3,0.6),'DIV':(6,1.2),
+            'LOAD':(3,0.4),'STORE':(3,0.4),'FMA':(4,0.8),'VDOT32':(4,0.9),
 
-    def execute_instruction(self, instr):
-        mnemonic = instr['mnemonic']
-        operands = instr['operands']
-        info = INSTRUCTIONS[mnemonic]
-        latency = info['latency']
-        energy = info['energy']
+    def _step_cost(self, opname, fused=False):
+        if opname in self.costs:
+            c,e = self.costs[opname]
+        else:
+            c,e = (1,0.2)
+        # fused reduce cycles a bit
+        if fused:
+            c = max(1, int(math.ceil(c*0.6)))
+            e *= 0.9
+        return c,e
 
-        if mnemonic == 'ADD':
-            rd = int(operands[0][1:])
-            rs1 = int(operands[1][1:])
-            op2 = operands[2]
-            if op2.startswith('R'):
-                rs2 = int(op2[1:])
-                self.regs[rd] = self.regs[rs1] + self.regs[rs2]
-            else:
-                imm = int(op2)
-                self.regs[rd] = self.regs[rs1] + imm
-        elif mnemonic == 'LOAD':
-            rd = int(operands[0][1:])
-            addr_str = operands[1]
-            if addr_str.startswith('[') and addr_str.endswith(']'):
-                base_str = addr_str[1:-1]
-                if base_str.startswith('R'):
-                    base = int(base_str[1:])
-                    addr = self.regs[base]
-                else:
-                    addr = int(base_str)
-                self.regs[rd] = self.memory[addr]
-        elif mnemonic == 'STORE':
-            rs = int(operands[0][1:])
-            addr_str = operands[1]
-            if addr_str.startswith('[') and addr_str.endswith(']'):
-                base_str = addr_str[1:-1]
-                if base_str.startswith('R'):
-                    base = int(base_str[1:])
-                    addr = self.regs[base]
-                else:
-                    addr = int(base_str)
-                self.memory[addr] = self.regs[rs]
-        elif mnemonic == 'VDOT32':
-            vd = int(operands[0][1:])
-            vs1 = int(operands[1][1:])
-            vs2 = int(operands[2][1:])
-            # Assume scalar for now
-            dot = self.regs[vs1] * self.regs[vs2]
-            self.vregs[vd][0] = dot
-        elif mnemonic == 'FMA':
-            rd = int(operands[0][1:])
-            rs1 = int(operands[1][1:])
-            rs2 = int(operands[2][1:])
-            rs3 = int(operands[3][1:])
-            self.regs[rd] = self.regs[rs1] * self.regs[rs2] + self.regs[rs3]
-        elif mnemonic == 'BR_IF':
-            cond = operands[0]
-            rs = int(operands[1][1:])
-            label = operands[2]
-            # Assume offset is calculated elsewhere
-            if cond == 'LT' and self.regs[rs] < 20:
-                self.pc = int(label) - 1  # Simple offset
-        elif mnemonic == 'SAVE_DELTA':
-            temp = int(operands[0][1:])
-            rd = operands[1]
-            self.regs[temp] = self.regs[int(rd[1:])]  # Save copy
-        elif mnemonic == 'RESTORE_DELTA':
-            temp = int(operands[0][1:])
-            rd = operands[1]
-            self.regs[int(rd[1:])] = self.regs[temp]  # Restore
-        elif mnemonic == 'FUSED_LOAD_ADD_STORE':
-            addr = operands[0]
-            rs2 = operands[1]
-            store_addr = operands[2]
-            # Simulate fused: load, add, store
-            if addr.startswith('['):
-                base = int(addr[2:-1][1:])
-                val = self.memory[self.regs[base]]
-            else:
-                val = int(addr)
-            result = val + int(rs2)
-            if store_addr.startswith('['):
-                base = int(store_addr[2:-1][1:])
-                self.memory[self.regs[base]] = result
-        elif mnemonic == 'FUSED_LOAD_VDOT32':
-            addr = operands[0]
-            vd = int(operands[1][1:])
-            vs2 = int(operands[2][1:])
-            # Load and dot
-            if addr.startswith('['):
-                base = int(addr[2:-1][1:])
-                val = self.memory[self.regs[base]]
-            else:
-                val = int(addr)
-            dot = val * self.regs[vs2]
-            self.vregs[vd][0] = dot
-        elif mnemonic == 'FUSED_ADD_STORE':
-            rs1 = int(operands[0][1:])
-            rs2 = int(operands[1][1:])
-            store_addr = operands[2]
-            result = self.regs[rs1] + self.regs[rs2]
-            if store_addr.startswith('['):
-                base = int(store_addr[2:-1][1:])
-                self.memory[self.regs[base]] = result
-        elif mnemonic == 'HALT':
-            self.halted = True
+    def _apply_cost(self, opname, fused=False):
+        c,e = self._step_cost(opname,fused)
+        self.cycles += c
+        self.energy += c*e
+        # simple thermal model: temp increases proportional to energy added, relaxes slowly
+        self.temp += (c*e)*0.1
+        # passive cooling toward ambient 20 with small factor
+        self.temp -= (self.temp-20.0)*0.01
 
-        # Reversible support: log state for undo
-        if 'reversible' in instr and instr['reversible']:
-            self.reversible_log.append((self.pc, self.regs.copy(), self.vregs.copy()))
+    def _parse_reg(self, tok):
+        tok = tok.strip()
+        m = None
+        # R<number>
+        if tok.upper().startswith('R'):
+            try:
+                idx = int(tok[1:])
+                return idx
+            except:
+                return None
+        # immediate integer
+        try:
+            return int(tok)
+        except:
+            return None
 
-        self.cycles += latency
-        self.energy += energy
-        self.temperature += energy * 0.1  # Simple thermal model
-
-    def run(self, instructions):
+    def run(self, ast):
+        # execute linear AST
         self.pc = 0
-        self.cycles = 0
-        self.energy = 0.0
-        self.temperature = 0.0
-        self.halted = False
-        max_cycles = 1000  # Prevent infinite loops
-        cycle_count = 0
-        while self.pc < len(instructions) and not self.halted and cycle_count < max_cycles:
-            instr = instructions[self.pc]
-            self.execute_instruction(instr)
+        instrs = ast
+        while self.pc < len(instrs):
+            ins = instrs[self.pc]
+            op = ins['op']
+            fused = ins.get('fused', False)
+            # emulate small set
+            if op=='ADD':
+                dst = self._parse_reg(ins['args'][0])
+                a = self._parse_reg(ins['args'][1])
+                b = self._parse_reg(ins['args'][2])
+                aval = self.regs.get(a,0) if isinstance(a,int) and a in self.regs else (a if isinstance(a,int) else 0)
+                bval = self.regs.get(b,0) if isinstance(b,int) and b in self.regs else (b if isinstance(b,int) else 0)
+                self.regs[dst] = aval + bval
+                self._apply_cost('ADD', fused)
+                self.pc += 1
+                continue
+            if op=='LOAD':
+                # LOAD dst, [addr]  or LOAD dst, imm
+                dst = self._parse_reg(ins['args'][0])
+                src = ins['args'][1] if len(ins['args'])>1 else None
+                # if src numeric immediate, load immediate
+                val = 0
+                try:
+                    if isinstance(src,str) and src.startswith('['):
+                        # memory not implemented: use hash of addr
+                        addr = src.strip()
+                        val = hash(addr) & 0xffff
+                    else:
+                        val = int(src)
+                except:
+                    val = 0
+                self.regs[dst] = val
+                self._apply_cost('LOAD', fused)
+                self.pc += 1
+                continue
+            if op=='STORE':
+                # noop except cost
+                self._apply_cost('STORE', fused)
+                self.pc += 1
+                continue
+            if op=='BR_IF':
+                # BR_IF 'cond_op reg1', reg2, label
+                cond_str, reg2_str, label = ins['args']
+                cond_op, reg1_str = cond_str.split()
+                reg1 = self._parse_reg(reg1_str)
+                reg2 = self._parse_reg(reg2_str)
+                val1 = self.regs.get(reg1,0)
+                val2 = self.regs.get(reg2,0)
+                cond = False
+                if cond_op == 'LT':
+                    cond = val1 < val2
+                elif cond_op == 'LE':
+                    cond = val1 <= val2
+                elif cond_op == 'GT':
+                    cond = val1 > val2
+                elif cond_op == 'GE':
+                    cond = val1 >= val2
+                elif cond_op == 'EQ':
+                    cond = val1 == val2
+                elif cond_op == 'NE':
+                    cond = val1 != val2
+                if cond:
+                    # jump to label
+                    for idx, i in enumerate(instrs):
+                        if i.get('op')=='LABEL' and i.get('name')==label:
+                            self.pc = idx
+                            break
+                else:
+                    self.pc += 1
+                self._apply_cost('BR_IF', fused)
+                continue
+            if op=='FUSED_LOAD_ADD':
+                # handled as sequence in compiler; if appears here just charge fused cost
+                self._apply_cost('FUSED_LOAD_ADD', fused=True)
+                self.pc += 1
+                continue
+            if op=='HALT':
+                self._apply_cost('HALT', fused)
+                break
+            if op=='LABEL':
+                self.pc += 1
+                continue
+            if op=='FUNC' or op=='END_FUNC':
+                self.pc += 1
+                continue
+            # fallback: charge default
+            self._apply_cost(op, fused)
             self.pc += 1
-            cycle_count += 1
-        return self.cycles, self.energy, self.temperature
+        # return summary metrics
+        return self.cycles, round(self.energy,6), round(self.temp,6)
 
-    def reverse_step(self):
-        if self.reversible_log:
-            self.pc, self.regs, self.vregs = self.reversible_log.pop()
-            # Adjust cycles/energy if needed
+if __name__=='__main__':
+    # quick smoke test
+    from compiler import CRZCompiler
+    c = CRZCompiler()
+    ast = c.compile("ADD R0, R1, 5; HALT;")['ast']
+    sim = CRZSimulator()
+    sim.regs[1]=10
+    cycles,energy,temp = sim.run(ast)
+    print("Result R0:", sim.regs[0], "cycles", cycles, "energy", energy, "temp", temp)

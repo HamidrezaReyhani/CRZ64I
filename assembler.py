@@ -7,17 +7,16 @@ class CRZAssembler:
     def __init__(self):
         self.bytecode = []
         self.labels = {}
-        # Reverse mapping for disassembly
-        self.opcode_to_mnemonic = {info['opcode']: mnemonic for mnemonic, info in INSTRUCTIONS.items()}
 
     def resolve_labels(self, parsed, labels):
         # Resolve branch targets to offsets
         for instr in parsed:
             if instr['mnemonic'] == 'BR_IF':
-                cond, rs, label = instr['operands']
-                if label in labels:
-                    target = labels[label]
-                    instr['operands'][2] = str(target)  # Replace label with offset
+                if len(instr['operands']) >= 3:
+                    cond, rs, label = instr['operands'][0], instr['operands'][1], instr['operands'][2]
+                    if label in labels:
+                        target = labels[label]
+                        instr['operands'][2] = str(target)  # Replace label with offset
         return parsed
 
     def assemble_instruction(self, instr):
@@ -35,12 +34,32 @@ class CRZAssembler:
                 encoding.append(reg_num & 0xFF)
             elif op.startswith('#'):
                 # Immediate
-                imm = int(op[1:])
+                imm_str = op[1:].strip()
+                if imm_str:
+                    imm = int(imm_str)
+                else:
+                    imm = 0
                 encoding.extend([(imm >> 8 * i) & 0xFF for i in range(4)])  # 32-bit imm
             else:
-                # Label offset or memory
-                offset = int(op)
-                encoding.append(offset & 0xFF)
+                # Label offset, memory, or condition
+                if op.startswith('['):
+                    inner = op[1:-1]
+                    if inner.startswith('R'):
+                        reg_num = int(inner[1:])
+                        encoding.append(reg_num & 0xFF | 0x80)  # Memory flag
+                    else:
+                        try:
+                            offset = int(inner)
+                            encoding.append(offset & 0xFF)
+                        except ValueError:
+                            encoding.append(0)
+                else:
+                    try:
+                        offset = int(op)
+                        encoding.append(offset & 0xFF)
+                    except ValueError:
+                        # Condition string like 'LT'
+                        encoding.append(0)
         self.bytecode.extend(encoding)
 
     def assemble(self, parsed, labels):
@@ -51,19 +70,25 @@ class CRZAssembler:
         return self.bytecode
 
     def disassemble(self, bytecode):
-        """Disassembler for CRZ64I bytecode"""
-        instructions = []
+        # Simple disassembler
+        disassembled = []
         i = 0
         while i < len(bytecode):
             opcode = bytecode[i]
-            mnemonic = self.opcode_to_mnemonic.get(opcode, 'UNKNOWN')
-            i += 1
+            mnemonic = next((k for k, v in INSTRUCTIONS.items() if v['opcode'] == opcode), 'UNKNOWN')
             operands = []
-            num_ops = INSTRUCTIONS[mnemonic]['operands'] if mnemonic in INSTRUCTIONS else 0
+            i += 1
+            num_ops = INSTRUCTIONS.get(mnemonic, {'operands': 0})['operands']
             for _ in range(num_ops):
                 if i < len(bytecode):
-                    op_val = bytecode[i]
-                    operands.append(f"R{op_val}")
+                    op = bytecode[i]
+                    if op & 0x80:
+                        reg = op & 0x7F
+                        operands.append(f"[R{reg}]")
+                    else:
+                        operands.append(f"R{op}")
                     i += 1
-            instructions.append(f"{mnemonic} {' '.join(operands)}")
-        return instructions
+                else:
+                    operands.append("0")
+            disassembled.append(f"{mnemonic} {' '.join(operands)}")
+        return disassembled

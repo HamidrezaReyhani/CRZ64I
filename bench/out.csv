@@ -1,0 +1,7 @@
+name,cycles,energy,temp
+ADD,1,1.0,25.1
+LOAD,1,0.5,25.05
+STORE,1,0.5,25.05
+VDOT32,1,1.0,25.1
+FMA,1,1.0,25.1
+BRANCH,1,0.2,25.02

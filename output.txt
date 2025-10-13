@@ -1,14 +1,1 @@
-Traceback (most recent call last):
-  File "/home/crzc/CRZ64I/main.py", line 46, in <module>
-    main()
-    ~~~~^^
-  File "/home/crzc/CRZ64I/main.py", line 31, in main
-    cycles, energy = simulator.run(optimized)
-                     ~~~~~~~~~~~~~^^^^^^^^^^^
-  File "/home/crzc/CRZ64I/simulator.py", line 55, in run
-    self.execute_instruction(instr)
-    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^
-  File "/home/crzc/CRZ64I/simulator.py", line 28, in execute_instruction
-    rd, imm = int(operands[0][1:]), int(operands[1][1:])
-                                    ~~~^^^^^^^^^^^^^^^^^
-ValueError: invalid literal for int() with base 10: 'R1]'
+True

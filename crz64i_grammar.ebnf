@@ -1,0 +1,75 @@
+(* CRZ64I Formal Grammar - EBNF Notation *)
+
+program ::= { top_level_declaration } ;
+
+top_level_declaration ::= attribute_list? ( function_declaration | global_instruction ) ;
+
+attribute_list ::= { attribute } ;
+
+attribute ::= "#[" identifier [ "=" value ] "]" ;
+
+function_declaration ::= "fn" identifier "(" parameter_list? ")" block ;
+
+parameter_list ::= parameter { "," parameter } ;
+
+parameter ::= identifier ":" type ;
+
+type ::= "i8" | "i16" | "i32" | "i64" | "u8" | "u16" | "u32" | "u64" | "f32" | "f64" | "ptr" | vector_type ;
+
+vector_type ::= "vec" "<" integer "," type ">" ;
+
+block ::= "{" { statement } "}" ;
+
+statement ::= attribute_list? ( instruction ";" | local_declaration | return_statement | label | if_statement | loop_statement ) ;
+
+local_declaration ::= "let" identifier [ ":" type ] "=" expression ";" ;
+
+return_statement ::= "return" expression? ";" ;
+
+label ::= identifier ":" ;
+
+if_statement ::= "if" expression block [ "else" block ] ;
+
+loop_statement ::= "for" identifier "in" range_expression block ;
+
+range_expression ::= expression ".." expression ;
+
+expression ::= primary_expression { binary_operator primary_expression } ;
+
+primary_expression ::= identifier | number | string | "(" expression ")" | function_call | memory_reference ;
+
+function_call ::= identifier "(" argument_list? ")" ;
+
+argument_list ::= expression { "," expression } ;
+
+memory_reference ::= "[" expression "]" ;
+
+binary_operator ::= "+" | "-" | "*" | "/" | "%" | "<<" | ">>" | "&" | "|" | "^" | "&&" | "||" | "==" | "!=" | "<" | "<=" | ">" | ">=" ;
+
+instruction ::= mnemonic operand_list? ;
+
+operand_list ::= operand { "," operand } ;
+
+operand ::= register | immediate | memory_reference | label_reference ;
+
+register ::= "R" integer | "V" integer ;
+
+immediate ::= number | string ;
+
+label_reference ::= identifier ;
+
+mnemonic ::= identifier ;
+
+identifier ::= letter { letter | digit | "_" } ;
+
+number ::= [ "-" ] digit { digit } [ "." digit { digit } ] ;
+
+string ::= '"' { character } '"' ;
+
+letter ::= "a" | "b" | ... | "z" | "A" | "B" | ... | "Z" ;
+
+digit ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
+
+integer ::= digit { digit } ;
+
+character ::= (* any printable character except " *) ;

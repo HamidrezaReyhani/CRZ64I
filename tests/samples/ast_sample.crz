@@ -1,0 +1,6 @@
+#[fusion]
+fn foo(x, y) {
+    LOAD R1, [x];
+    ADD R2, R1, y;
+    STORE R2, [x];
+}

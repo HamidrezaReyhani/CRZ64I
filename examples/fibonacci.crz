@@ -1,0 +1,11 @@
+#[reversible]
+fn fib(n) {
+  let a = 0;
+  let b = 1;
+  for i in 0..n {
+    let tmp = a;
+    a = b;
+    b = tmp + b;
+  }
+  return b;
+}

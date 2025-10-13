@@ -1,0 +1,4 @@
+fn main() {
+    LOAD R0, [R1];
+    ADD R0, R0, 5;
+}

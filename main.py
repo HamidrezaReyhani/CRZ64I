@@ -35,8 +35,8 @@ def main():
         compiler = CRZCompiler()
         optimized = compiler.compile(instructions)
         simulator = CRZSimulator()
-        cycles, energy = simulator.run(optimized)
-        print(f"Simulation: Cycles={cycles}, Energy={energy}")
+        cycles, energy, temperature = simulator.run(optimized)
+        print(f"Simulation: Cycles={cycles}, Energy={energy}, Temperature={temperature}")
     elif command == 'run' and len(sys.argv) > 2:
         file = sys.argv[2]
         with open(file, 'r') as f:
@@ -53,8 +53,8 @@ def main():
         compiler = CRZCompiler()
         optimized = compiler.compile(instructions)
         simulator = CRZSimulator()
-        cycles, energy = simulator.run(optimized)
-        print(f"Run {file}: Cycles={cycles}, Energy={energy}")
+        cycles, energy, temperature = simulator.run(optimized)
+        print(f"Run {file}: Cycles={cycles}, Energy={energy}, Temperature={temperature}")
 
 if __name__ == '__main__':
     main()

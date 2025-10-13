@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRZ64I</title>
+    <style>
+        #progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: dodgerblue;
+            filter: blur(1px);
+            transform-origin: center;
+            transform: scaleX(0);
+            z-index: 1000;
+        }
+        body {
+            margin: 0;
+            padding-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="progress-bar"></div>
+    <h1>Welcome to CRZ64I</h1>
+    <p>This is the main page.</p>
+    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+    <p>Section 2: Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+    <p>Section 3: Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+    <script>
+        // Obfuscated license check
+        var _0x1a2b = function() {
+            return fetch('/LICENSE', {method: 'HEAD'}).then(function(_0x3c4d) {
+                return _0x3c4d.ok;
+            }).catch(function() {
+                return false;
+            });
+        };
+        var _0x5e6f = function() {
+            if (typeof _0x1a2b !== 'function') {
+                return false;
+            }
+            return _0x1a2b();
+        };
+        _0x5e6f().then(function(_0x7g8h) {
+            if (!_0x7g8h) {
+                document.body.innerHTML = '<h1>License not found</h1>';
+            }
+        });
+
+        // Scroll progress bar
+        const progressBar = document.getElementById('progress-bar');
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset / (document.body.scrollHeight - window.innerHeight);
+            progressBar.style.transform = `scaleX(${scrolled})`;
+        });
+    </script>
+</body>
+</html>

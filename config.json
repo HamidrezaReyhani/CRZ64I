@@ -1,0 +1,25 @@
+{
+  "energy": {
+    "ADD": 6e-08,
+    "SUB": 6e-08,
+    "MUL": 1.2e-06,
+    "DIV": 3e-06,
+    "LOAD": 3.5e-07,
+    "STORE": 3.5e-07,
+    "JMP": 1e-08,
+    "BR_IF": 2.5e-07,
+    "LABEL": 0.0,
+    "BRANCH": 3e-07,
+    "FUSED_LOAD_ADD": 4.1e-07
+  },
+  "thermal": {
+    "base_temp": 25.0,
+    "heat_factor": 0.1,
+    "heat_capacity": 100.0,
+    "thermal_resistance": 0.5
+  },
+  "cores": 4,
+  "energy_unit": 1.0,
+  "sim_clock_hz": 17183382.42,
+  "memory_limit": null
+}

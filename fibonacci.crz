@@ -1,0 +1,19 @@
+#[fusion]
+#[reversible]
+fn fib(n) {
+  // Iterative Fibonacci: compute fib(n) in R0
+  // Assume n in R3, result in R0
+  // R1 = a, R2 = b, R4 = i
+  LOAD R1, 0;  // a = 0
+  LOAD R2, 1;  // b = 1
+  LOAD R4, 1;  // i = 1
+loop:
+  ADD R0, R1, R2;  // next = a + b
+  ADD R1, R2, 0;   // a = b
+  ADD R2, R0, 0;   // b = next
+  ADD R4, R4, 1;   // i++
+  BR_IF LT R4, R3, loop;
+  // Result in R2
+  ADD R0, R2, 0;
+  HALT;
+}

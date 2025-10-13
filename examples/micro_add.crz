@@ -1,0 +1,12 @@
+#N=100000
+fn micro_add() {
+    let i: i32 = 0;
+    let a: i32 = 0;
+    let out: i32 = 1000;
+    for i in 0..N {
+        LOAD r1, [a + i];
+        ADD r2, r1, 5;
+        STORE r2, [out + i];
+    }
+    HALT;
+}

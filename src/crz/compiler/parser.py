@@ -29,11 +29,22 @@ class CRZTransformer(Transformer):
 
     visit_tokens = True
 
-    def __init__(self, code: str):
+    def __init__(self, code: str) -> None:
         self.code = code
 
+    def _binary_expr(self, children, ops) -> str:
+        """Helper for binary expressions."""
+        if len(children) == 1:
+            return self.transform(children[0])
+        left = self.transform(children[0])
+        for i in range(1, len(children), 2):
+            op = children[i]
+            right = self.transform(children[i + 1])
+            left = f"{left} {op} {right}"
+        return left
+
     @v_args(meta=True)
-    def attribute(self, meta, children):
+    def attribute(self, meta, children) -> Attribute:
         """Transform attribute to Attribute dataclass."""
         name = children[2]  # NAME is at index 2, already string
         value = None
@@ -43,11 +54,11 @@ class CRZTransformer(Transformer):
             value = children[4]  # already string
         return Attribute(name=name, value=value, meta=meta)
 
-    def attribute_list(self, children):
+    def attribute_list(self, children) -> List[Attribute]:
         """Transform attribute_list to list of attributes."""
         return children
 
-    def expression(self, children):
+    def expression(self, children) -> str:
         """Transform expression to string."""
         if len(children) == 1:
             return self.transform(children[0])
@@ -60,27 +71,27 @@ class CRZTransformer(Transformer):
                 left = f"{left} {op} {right}"
             return left
 
-    def or_expression(self, children):
+    def or_expression(self, children) -> str:
         """Transform or_expression."""
         return self._binary_expr(children, ["||"])
 
-    def and_expression(self, children):
+    def and_expression(self, children) -> str:
         """Transform and_expression."""
         return self._binary_expr(children, ["&&"])
 
-    def comparison_expression(self, children):
+    def comparison_expression(self, children) -> str:
         """Transform comparison_expression."""
         return self._binary_expr(children, ["==", "!=", "<", "<=", ">", ">="])
 
-    def add_expression(self, children):
+    def add_expression(self, children) -> str:
         """Transform add_expression."""
         return self._binary_expr(children, ["+", "-"])
 
-    def mul_expression(self, children):
+    def mul_expression(self, children) -> str:
         """Transform mul_expression."""
         return self._binary_expr(children, ["*", "/", "%", "<<", ">>", "&", "|", "^"])
 
-    def unary_expression(self, children):
+    def unary_expression(self, children) -> str:
         """Transform unary_expression to string."""
         if len(children) == 1:
             return self.transform(children[0])
@@ -88,11 +99,11 @@ class CRZTransformer(Transformer):
         expr = self.transform(children[1])
         return f"({op}{expr})"
 
-    def primary_expression(self, children):
+    def primary_expression(self, children) -> str:
         """Transform primary_expression to string."""
         return self.transform(children[0])
 
-    def function_call(self, children):
+    def function_call(self, children) -> str:
         """Transform function_call to string like 'func(a, b)'."""
         name = children[0]
         if len(children) == 3:  # NAME LPAREN RPAREN
@@ -100,30 +111,30 @@ class CRZTransformer(Transformer):
         args = self.argument_list(children[2])
         return f"{name}({', '.join(args)})"
 
-    def argument_list(self, children):
+    def argument_list(self, children) -> List[str]:
         """Transform argument_list to list of expression strings."""
         return [self.transform(c) for c in children[0::2]]
 
-    def memory_reference(self, children):
+    def memory_reference(self, children) -> str:
         """Transform memory_reference to string like '[expr]'."""
         # children = [LBRA, expression, RBRA] = ['[', 'R1', ']']
         expr = children[1]
         return f"[{expr}]"
 
-    def range_expression(self, children):
+    def range_expression(self, children) -> Tuple[str, str]:
         """Transform range_expression to (start, end) tuple of strings."""
         start = self.transform(children[0])
         end = self.transform(children[1])
         return (start, end)
 
-    def parameter_list(self, children):
+    def parameter_list(self, children) -> List[Tuple[str, Optional[str]]]:
         """Transform parameter_list to list of (name, type) tuples."""
         params = []
         for param in children[::2]:  # Skip COMMA
             params.append(self.transform(param))
         return params
 
-    def parameter(self, children):
+    def parameter(self, children) -> Tuple[str, Optional[str]]:
         """Transform parameter to (name, type) tuple."""
         name = children[0]
         type_ = (
@@ -131,22 +142,22 @@ class CRZTransformer(Transformer):
         )  # NAME : type
         return (name, type_)
 
-    def return_type(self, children):
+    def return_type(self, children) -> str:
         """Transform return_type to type string."""
         return self.transform(children[1])  # -> type
 
-    def type(self, children):
+    def type(self, children) -> str:
         """Transform type to string."""
         return children[0]
 
-    def vector_type(self, children):
+    def vector_type(self, children) -> str:
         """Transform vector_type to string like 'vec<16,i32>'."""
         size = children[2]
         elem_type = self.transform(children[4])
         return f"vec<{size},{elem_type}>"
 
     @v_args(meta=True)
-    def local_declaration(self, meta, children):
+    def local_declaration(self, meta, children) -> LocalDecl:
         """Transform local_declaration to LocalDecl."""
         name = children[1]
         if children[2] == ":":
@@ -158,20 +169,20 @@ class CRZTransformer(Transformer):
         return LocalDecl(name=name, type_=type_, expr=expr, meta=meta)
 
     @v_args(meta=True)
-    def return_statement(self, meta, children):
+    def return_statement(self, meta, children) -> Return:
         """Transform return_statement to Return."""
         expr = self.transform(children[1]) if len(children) > 1 else None
         return Return(expr=expr, meta=meta)
 
     @v_args(meta=True)
-    def assignment(self, meta, children):
+    def assignment(self, meta, children) -> Assign:
         """Transform assignment to Assign."""
         target = children[0]
         expr = self.transform(children[2])
         return Assign(target=target, expr=expr, meta=meta)
 
     @v_args(meta=True)
-    def if_statement(self, meta, children):
+    def if_statement(self, meta, children) -> If:
         """Transform if_statement to If."""
         condition = self.transform(children[1])
         then_block = self.transform(children[2])
@@ -185,7 +196,7 @@ class CRZTransformer(Transformer):
         )
 
     @v_args(meta=True)
-    def loop_statement(self, meta, children):
+    def loop_statement(self, meta, children) -> Loop:
         """Transform loop_statement to Loop."""
         var = children[1]
         range_expr = self.transform(children[3])
@@ -199,11 +210,11 @@ class CRZTransformer(Transformer):
             meta=meta,
         )
 
-    def operand_list(self, children):
+    def operand_list(self, children) -> List[str]:
         """Transform operand_list to list of operand strings."""
         return [self.transform(c) for c in children[::2]]
 
-    def operand(self, children):
+    def operand(self, children) -> str:
         """Transform operand to string."""
         result = self.transform(children[0])
         if isinstance(result, Token):
@@ -211,35 +222,35 @@ class CRZTransformer(Transformer):
         else:
             return str(result)
 
-    def immediate(self, children):
+    def immediate(self, children) -> str:
         """Transform immediate to string."""
         return children[0]  # already string
 
-    def label_reference(self, children):
+    def label_reference(self, children) -> str:
         """Transform label_reference to string."""
         return children[0]
 
     # Terminal transformers
-    def REGISTER(self, token):
+    def REGISTER(self, token) -> str:
         return token.value
 
-    def NUMBER(self, token):
+    def NUMBER(self, token) -> str:
         return token.value
 
-    def NAME(self, token):
+    def NAME(self, token) -> str:
         return token.value
 
-    def STRING(self, token):
+    def STRING(self, token) -> str:
         return token.value
 
-    def MNEMONIC(self, token):
+    def MNEMONIC(self, token) -> str:
         return token.value
 
-    def CONDITION(self, token):
+    def CONDITION(self, token) -> str:
         return token.value
 
     @v_args(meta=True)
-    def instruction(self, meta, children):
+    def instruction(self, meta, children) -> Instr:
         """Transform instruction to Instr dataclass."""
         mnemonic = children[0]  # already string
         operands = (
@@ -249,13 +260,13 @@ class CRZTransformer(Transformer):
         return Instr(mnemonic=mnemonic, operands=operands, attrs=[], raw=raw, meta=meta)
 
     @v_args(meta=True)
-    def label(self, meta, children):
+    def label(self, meta, children) -> Label:
         """Transform label to Label dataclass."""
         name = children[0]
         return Label(name=name, meta=meta)
 
     @v_args(meta=True)
-    def function_declaration(self, meta, children):
+    def function_declaration(self, meta, children) -> Function:
         """Transform function_declaration to Function dataclass."""
         name = children[1]  # already string
 
@@ -289,7 +300,7 @@ class CRZTransformer(Transformer):
         )
 
     @v_args(meta=True)
-    def statement(self, meta, children):
+    def statement(self, meta, children) -> Statement:
         """Transform statement, attaching attributes to the item."""
         if len(children) == 1:
             return self.transform(children[0])
@@ -300,7 +311,7 @@ class CRZTransformer(Transformer):
         return stmt
 
     @v_args(meta=True)
-    def top_level_declaration(self, meta, children):
+    def top_level_declaration(self, meta, children) -> Union[Function, Instr, Label]:
         """Transform top_level_declaration, attaching attributes."""
         if len(children) == 1:
             return children[0]
@@ -310,11 +321,11 @@ class CRZTransformer(Transformer):
             decl.attrs = attrs_list + getattr(decl, "attrs", [])
         return decl
 
-    def block(self, children):
+    def block(self, children) -> List[Statement]:
         """Transform block to list of statements."""
         return [self.transform(s) for s in children[1:-1]]  # skip LBRACE and RBRACE
 
-    def program(self, children):
+    def program(self, children) -> Program:
         """Transform program to Program dataclass."""
         declarations = [d for d in children if d is not None]
         return Program(declarations=declarations)
@@ -356,8 +367,8 @@ def parse_text(code: str) -> Program:
 
 
 class Parser:
-    def __init__(self, lark_path):
+    def __init__(self, lark_path: str) -> None:
         pass
 
-    def parse(self, code):
+    def parse(self, code: str) -> Program:
         return parse(code)

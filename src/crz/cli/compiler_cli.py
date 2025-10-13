@@ -1,18 +1,21 @@
 #!/usr/bin/env python3
 """CLI entrypoint for CRZ64I compiler."""
 
+
 import argparse
 import sys
 import json
 import csv
 from pathlib import Path
+from typing import Dict, Any
+from crz.compiler.ast import Function
 from rich.console import Console
 from rich.progress import Progress
 from crz.compiler.parser import parse
 from crz.compiler.semantic import SemanticAnalyzer
 from crz.compiler.dataflow import DataflowAnalyzer
 from crz.compiler.passes import run_passes
-from crz.compiler.codegen_sim import codegen_sim
+from crz.compiler.codegen_sim import codegen as codegen_sim
 from crz.simulator.simulator import Simulator
 from crz.config import load_config
 
@@ -20,6 +23,8 @@ console = Console()
 
 
 def main() -> int:
+    from crz.config import load_config
+    config = load_config("config.json")
     parser = argparse.ArgumentParser(description="CRZ64I Compiler")
     subparsers = parser.add_subparsers(dest="command")
 
@@ -54,7 +59,7 @@ def main() -> int:
                 return 1
             # Dataflow check
             for decl in program.declarations:
-                if hasattr(decl, "name"):
+                if isinstance(decl, Function):
                     df_analyzer = DataflowAnalyzer(decl)
                     df_issues = df_analyzer.analyze()
                     issues.extend(df_issues)
@@ -63,9 +68,9 @@ def main() -> int:
                     console.print(f"[red]{issue['type']}: {issue['message']}[/red]")
                 return 1
             # Passes
-            config = {}
+            compile_pass_config: Dict[str, Any] = {}
             optimized = run_passes(
-                program, ["fusion", "reversible_emulation", "energy_profile"], config
+                program, ["fusion", "reversible_emulation", "energy_profile"], compile_pass_config
             )
             ir = codegen_sim(optimized)
             ir_json = [
@@ -87,23 +92,25 @@ def main() -> int:
 
     elif args.command == "run":
         try:
-            config = load_config()
+            run_config = load_config("config.json")
             code = Path(args.input).read_text()
             program = parse(code)
-            pass_config = {}
-            optimized = run_passes(program, ["fusion", "energy_profile"], pass_config)
+            run_pass_config: Dict[str, Any] = {}
+            optimized = run_passes(program, ["fusion", "energy_profile"], run_pass_config)
             sim_ir = codegen_sim(optimized)
-            sim = Simulator(config)
+            sim = Simulator(run_config)
             with Progress() as progress:
                 task = progress.add_task("Simulating...", total=args.iterations)
                 total_cycles = 0
                 total_energy = 0.0
                 max_temp = 0.0
                 for _ in range(args.iterations):
-                    cycles, energy, temp, _ = sim.run(sim_ir, metrics=True)
-                    total_cycles += cycles
-                    total_energy += energy
-                    max_temp = max(max_temp, temp)
+                    result = sim.run(sim_ir, metrics=True)
+                    if result is not None:
+                        cycles, energy, temp = result
+                        total_cycles += cycles
+                        total_energy += energy
+                        max_temp = max(max_temp, temp)
                     progress.advance(task)
             console.print(
                 f"Cycles: {total_cycles}, Energy: {total_energy:.2f}, Max Temp: {max_temp:.2f}"
@@ -114,7 +121,7 @@ def main() -> int:
 
     elif args.command == "bench":
         try:
-            config = load_config()
+            bench_config = load_config("config.json")
             dir_path = Path(args.dir)
             files = list(dir_path.glob("*.crz"))
             results = []
@@ -123,13 +130,17 @@ def main() -> int:
                 for file in files:
                     code = file.read_text()
                     program = parse(code)
-                    pass_config = {}
+                    bench_pass_config: Dict[str, Any] = {}
                     optimized = run_passes(
-                        program, ["fusion", "energy_profile"], pass_config
+                        program, ["fusion", "energy_profile"], bench_pass_config
                     )
                     sim_ir = codegen_sim(optimized)
-                    sim = Simulator(config)
-                    cycles, energy, temp, _ = sim.run(sim_ir, metrics=True)
+                    sim = Simulator(bench_config)
+                    result = sim.run(sim_ir, metrics=True)
+                    if result is not None:
+                        cycles, energy, temp = result
+                    else:
+                        cycles, energy, temp = 0, 0.0, 25.0
                     results.append(
                         {
                             "name": file.stem,

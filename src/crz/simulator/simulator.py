@@ -6,7 +6,7 @@ Executes CRZ64I ops, tracks energy, thermal hotspots.
 """
 
 import json
-from typing import Dict, List, Any
+from typing import Any, Dict, List, Optional
 from pathlib import Path
 from ..config import load_config, Config
 from crz.compiler.parser import parse_text
@@ -14,7 +14,7 @@ from crz.compiler.codegen_sim import codegen
 from ..compiler.ast import Instr
 
 
-def compile_file(path: str):
+def compile_file(path: str) -> List[Dict[str, Any]]:
     with open(path, "r") as f:
         code = f.read()
     program = parse_text(code)
@@ -24,7 +24,7 @@ def compile_file(path: str):
 class Simulator:
     """CRZ64I Simulator."""
 
-    def __init__(self, config=None):
+    def __init__(self, config=None) -> None:
         if config is None:
             config = Config()
         elif isinstance(config, dict):
@@ -35,16 +35,16 @@ class Simulator:
         self.pc = 0
         self.flags = {"Z": 0, "N": 0}
         self.energy_used = 0.0
-        self.thermal_map: Dict[str, float] = {}  # Component to temperature
+        self.thermal_map: Dict[str, float] = {}
+        self._op_counts: Dict[str, int] = {}
         self.labels: Dict[str, int] = {}
         self.backup_regs: Dict[str, int] = {}
         self.sandbox_allow_io = False
         self.sandbox_allow_dma = False
         self.cycles = 0
-        self._op_counts: Dict[str, int] = {}
-        self.wall_clock_s = 0.0  # Wall clock time in seconds
+        self.wall_clock_s: float = 0.0
 
-    def check_memory_bounds(self, addr: int):
+    def check_memory_bounds(self, addr: int) -> None:
         """Check and auto-grow memory bounds."""
         # reject negative addresses
         if addr < 0:
@@ -73,7 +73,7 @@ class Simulator:
             return int(s)
         return self.regs.get(s, 0)
 
-    def execute_op(self, mnemonic: str, operands: List[str]):
+    def execute_op(self, mnemonic: str, operands: List[str]) -> None:
         """Execute a single operation."""
         # --- compute energy for this opcode (per-op energy from config) ---
         energy = self.config.energy.get(mnemonic, 0.0)
@@ -268,8 +268,8 @@ class Simulator:
             self.flags["N"] = 1 if self.regs[rd] < 0 else 0
 
     def update_thermal_advanced(
-        self, mnemonic: str, energy_joule: float, dt: float = None, cycles: int = None
-    ):
+        self, mnemonic: str, energy_joule: float, dt: Optional[float] = None, cycles: Optional[int] = None
+    ) -> None:
         """Update thermal hotspots using physics-based heating over duration dt (seconds).
         energy_joule: energy consumed in this opcode (Joules).
         dt: duration in seconds (optional). If not provided, will attempt to compute using cycles and config.sim_clock_hz.
@@ -307,13 +307,13 @@ class Simulator:
     def get_reg(self, reg: str) -> int:
         return self.regs[reg]
 
-    def set_reg(self, reg: str, val: int):
+    def set_reg(self, reg: str, val: int) -> None:
         self.regs[reg] = val
 
     def get_flag(self, flag: str) -> bool:
         return self.flags[flag] == 1
 
-    def run_program(self, ops):
+    def run_program(self, ops) -> None:
         """Run a list of ops."""
         # Pre-build labels
         self.labels = {}
@@ -337,7 +337,7 @@ class Simulator:
             self.execute_op(mnemonic, operands)
             self.pc += 1
 
-    def run(self, ops: List[Dict[str, Any]], metrics: bool = True):
+    def run(self, ops: List[Dict[str, Any]], metrics: bool = True) -> Optional[tuple]:
         """Run ops and optionally return metrics."""
         self.cycles = 0
         self.energy_used = 0.0
@@ -350,11 +350,11 @@ class Simulator:
             return cycles, energy, temp
         return None
 
-    def get_energy_report(self) -> Dict[str, float]:
+    def get_energy_report(self) -> Dict[str, Any]:
         """Get energy report."""
         return {"total_energy": self.energy_used, "thermal_hotspots": self.thermal_map}
 
-    def get_state(self):
+    def get_state(self) -> Dict[str, Any]:
         """Get current simulator state for semantic equivalence checks."""
         return {
             "regs": dict(self.regs),

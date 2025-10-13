@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """CLI entrypoint for CRZ64I simulator."""
 
+
 import argparse
 import sys
 import csv
 from pathlib import Path
+from typing import Dict, Any
 from crz.compiler.parser import parse
 from crz.compiler.passes import run_passes
 from crz.compiler.codegen_sim import codegen as codegen_sim
@@ -42,10 +44,12 @@ def main() -> int:
         total_energy = 0.0
         max_temp = 0.0
         for _ in range(args.iterations):
-            cycles, energy, temp = sim.run(sim_ir)
-            total_cycles += cycles
-            total_energy += energy
-            max_temp = max(max_temp, temp)
+            result = sim.run(sim_ir)
+            if result is not None:
+                cycles, energy, temp = result
+                total_cycles += cycles
+                total_energy += energy
+                max_temp = max(max_temp, temp)
         print(f"Cycles: {total_cycles}, Energy: {total_energy}, Max Temp: {max_temp}")
         if args.report:
             with open(args.report, "w", newline="") as f:
@@ -58,12 +62,13 @@ def main() -> int:
     return 0
 
 
-def run_file(file_path):
+def run_file(file_path: str) -> Dict[str, Any]:
     """Run a CRZ64I file and return simulator state."""
-    config = load_config()
+    from crz.config import load_config
+    config = load_config("config.json")
     code = Path(file_path).read_text()
     program = parse(code)
-    pass_config = {}
+    pass_config: Dict[str, Any] = {}
     optimized = run_passes(program, ["fusion", "energy_profile"], pass_config)
     sim_ir = codegen_sim(optimized)
     sim = Simulator(config)

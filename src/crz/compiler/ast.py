@@ -6,13 +6,13 @@ Defines dataclasses for representing the Abstract Syntax Tree (AST) and Intermed
 
 import json
 from dataclasses import dataclass, asdict
-from typing import List, Optional, Tuple, Union, Dict, Any
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 
 def to_json_dict(obj):
     d = asdict(obj)
 
-    def remove_meta(o):
+    def remove_meta(o: Any) -> Any:
         if isinstance(o, dict):
             return {k: remove_meta(v) for k, v in o.items() if k != "meta"}
         elif isinstance(o, list):
@@ -31,7 +31,7 @@ class Attribute:
     value: Optional[str] = None
     meta: Optional[Dict[str, int]] = None
 
-    def to_json(self) -> dict:
+    def to_json(self) -> Dict[str, Any]:
         return to_json_dict(self)
 
 
@@ -49,7 +49,7 @@ class Instr:
     def op(self):
         return self.mnemonic
 
-    def to_json(self) -> dict:
+    def to_json(self) -> Dict[str, Any]:
         return to_json_dict(self)
 
 
@@ -60,7 +60,7 @@ class Label:
     name: str
     meta: Optional[Dict[str, int]] = None
 
-    def to_json(self) -> dict:
+    def to_json(self) -> Dict[str, Any]:
         return to_json_dict(self)
 
 
@@ -73,7 +73,7 @@ class LocalDecl:
     expr: str
     meta: Optional[Dict[str, int]] = None
 
-    def to_json(self) -> dict:
+    def to_json(self) -> Dict[str, Any]:
         return to_json_dict(self)
 
 
@@ -85,7 +85,7 @@ class Assign:
     expr: str
     meta: Optional[Dict[str, int]] = None
 
-    def to_json(self) -> dict:
+    def to_json(self) -> Dict[str, Any]:
         return to_json_dict(self)
 
 
@@ -96,7 +96,7 @@ class Return:
     expr: Optional[str]
     meta: Optional[Dict[str, int]] = None
 
-    def to_json(self) -> dict:
+    def to_json(self) -> Dict[str, Any]:
         return to_json_dict(self)
 
 
@@ -107,14 +107,14 @@ class If:
     condition: str
     then_block: List["Statement"]
     else_block: Optional[List["Statement"]]
-    attrs: List[Attribute] = None
+    attrs: Optional[List[Attribute]] = None
     meta: Optional[Dict[str, int]] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.attrs is None:
             self.attrs = []
 
-    def to_json(self) -> dict:
+    def to_json(self) -> Dict[str, Any]:
         return to_json_dict(self)
 
 
@@ -126,14 +126,14 @@ class Loop:
     start: str
     end: str
     body: List["Statement"]
-    attrs: List[Attribute] = None
+    attrs: Optional[List[Attribute]] = None
     meta: Optional[Dict[str, int]] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.attrs is None:
             self.attrs = []
 
-    def to_json(self) -> dict:
+    def to_json(self) -> Dict[str, Any]:
         return to_json_dict(self)
 
 
@@ -149,14 +149,14 @@ class Function:
     params: List[Tuple[str, Optional[str]]]  # (name, type)
     return_type: Optional[str]
     body: List[Statement]
-    attrs: List[Attribute] = None
+    attrs: Optional[List[Attribute]] = None
     meta: Optional[Dict[str, int]] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.attrs is None:
             self.attrs = []
 
-    def to_json(self) -> dict:
+    def to_json(self) -> Dict[str, Any]:
         return to_json_dict(self)
 
 
@@ -167,13 +167,13 @@ class Program:
     declarations: List[Union[Function, Instr, Label]]
     meta: Optional[Dict[str, int]] = None
 
-    def to_json(self) -> dict:
+    def to_json(self) -> Dict[str, Any]:
         functions = [d for d in self.declarations if isinstance(d, Function)]
-        attrs = []
+        attrs: List[Attribute] = []
         for d in self.declarations:
-            if hasattr(d, "attrs"):
+            if hasattr(d, "attrs") and d.attrs is not None:
                 attrs.extend(d.attrs)
         return {
             "functions": [f.to_json() for f in functions],
-            "attrs": [a.to_json() for a in attrs],
+            "attrs": [a.to_json() for a in attrs] if attrs else [],
         }

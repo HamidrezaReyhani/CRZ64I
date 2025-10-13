@@ -5,7 +5,7 @@ Performs semantic checks on the CRZ64I AST, including attribute placement valida
 realtime constraints, and reversible dataflow checks.
 """
 
-from typing import List, Dict, Any, Set
+from typing import List, Dict, Any, Optional, Set
 from rich.console import Console
 from .ast import Program, Function, Instr, If, Loop, Statement, Attribute, LocalDecl
 
@@ -25,10 +25,10 @@ class SemanticAnalyzer:
         self.visit_program(program)
         return self.errors + self.warnings
 
-    def log_issue(self, message: str, meta: Any, level: str = "error"):
+    def log_issue(self, message: str, meta: Optional[Dict[str, Any]], level: str = "error"):
         """Log an issue with location."""
-        line = meta.line if meta else 0
-        column = meta.column if meta else 0
+        line = meta.get("line", 0) if meta else 0
+        column = meta.get("column", 0) if meta else 0
         if level == "error":
             self.console.print(f"[red]Error at {line}:{column}: {message}[/red]")
             self.errors.append(
@@ -51,10 +51,12 @@ class SemanticAnalyzer:
     def visit_function(self, func: Function):
         """Visit function."""
         # Check attribute placement
-        self.check_attrs(func.attrs, "function", func.meta)
+        if func.attrs is not None:
+            issues = self.check_attrs(func.attrs, "function", func.meta)
+            self.errors.extend(issues)
         # Check realtime and reversible
-        in_realtime = any(attr.name == "realtime" for attr in func.attrs)
-        in_reversible = any(attr.name == "reversible" for attr in func.attrs)
+        in_realtime = any(attr.name == "realtime" for attr in (func.attrs or []))
+        in_reversible = any(attr.name == "reversible" for attr in (func.attrs or []))
         self.visit_block(func.body, in_realtime, in_reversible, set(), func.name)
 
     def visit_block(
@@ -68,18 +70,22 @@ class SemanticAnalyzer:
         """Visit a block of statements."""
         for stmt in block:
             if isinstance(stmt, Instr):
-                self.check_attrs(stmt.attrs, "instruction", stmt.meta)
+                if stmt.attrs is not None:
+                    issues = self.check_attrs(stmt.attrs, "instruction", stmt.meta)
+                    self.errors.extend(issues)
                 if in_realtime:
                     self.check_realtime_instr(stmt)
                 if in_reversible:
                     self.check_reversible_write(stmt, saved_targets, func_name)
             elif isinstance(stmt, If):
-                self.check_attrs(stmt.attrs, "if", stmt.meta)
+                if stmt.attrs is not None:
+                    issues = self.check_attrs(stmt.attrs, "if", stmt.meta)
+                    self.errors.extend(issues)
                 realtime = in_realtime or any(
-                    attr.name == "realtime" for attr in stmt.attrs
+                    attr.name == "realtime" for attr in (stmt.attrs or [])
                 )
                 reversible = in_reversible or any(
-                    attr.name == "reversible" for attr in stmt.attrs
+                    attr.name == "reversible" for attr in (stmt.attrs or [])
                 )
                 self.visit_block(
                     stmt.then_block, realtime, reversible, saved_targets, func_name
@@ -89,12 +95,14 @@ class SemanticAnalyzer:
                         stmt.else_block, realtime, reversible, saved_targets, func_name
                     )
             elif isinstance(stmt, Loop):
-                self.check_attrs(stmt.attrs, "loop", stmt.meta)
+                if stmt.attrs is not None:
+                    issues = self.check_attrs(stmt.attrs, "loop", stmt.meta)
+                    self.errors.extend(issues)
                 realtime = in_realtime or any(
-                    attr.name == "realtime" for attr in stmt.attrs
+                    attr.name == "realtime" for attr in (stmt.attrs or [])
                 )
                 reversible = in_reversible or any(
-                    attr.name == "reversible" for attr in stmt.attrs
+                    attr.name == "reversible" for attr in (stmt.attrs or [])
                 )
                 self.visit_block(
                     stmt.body, realtime, reversible, saved_targets, func_name
@@ -106,8 +114,9 @@ class SemanticAnalyzer:
                     if stmt.expr in [f"R{i}" for i in range(32)]:
                         saved_targets.add(stmt.expr)
 
-    def check_attrs(self, attrs: List[Attribute], context: str, meta: Any):
+    def check_attrs(self, attrs: List[Attribute], context: str, meta: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """Check if attributes are allowed in context."""
+        issues = []
         allowed = {
             "function": ["fusion", "reversible", "realtime", "power", "thermal_hint"],
             "instruction": ["fusion", "no_erase"],
@@ -116,9 +125,18 @@ class SemanticAnalyzer:
         }.get(context, [])
         for attr in attrs:
             if attr.name not in allowed:
+                line = meta.get("line", 0) if meta else 0
+                column = meta.get("column", 0) if meta else 0
                 self.log_issue(
                     f"Attribute #[{attr.name}] not allowed on {context}", meta
                 )
+                issues.append({
+                    "type": "error",
+                    "message": f"Attribute #[{attr.name}] not allowed on {context}",
+                    "line": line,
+                    "column": column,
+                })
+        return issues
 
     def check_realtime_instr(self, instr: Instr):
         """Check realtime constraints on instruction."""
@@ -177,7 +195,7 @@ class SemanticAnalyzer:
         ]
         if instr.mnemonic in write_ops and instr.operands:
             target = instr.operands[0]
-            has_no_erase = any(attr.name == "no_erase" for attr in instr.attrs)
+            has_no_erase = any(attr.name == "no_erase" for attr in (instr.attrs or []))
             if target not in saved_targets and not has_no_erase:
                 self.log_issue(
                     f"Write to {target} in function {func_name} without prior let tmp = {target} or #[no_erase]",

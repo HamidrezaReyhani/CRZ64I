@@ -36,7 +36,7 @@ class CFG:
 
     def enumerate_paths(self, max_paths: int = 100) -> List[List[int]]:
         """Enumerate paths from entry to exit, bounded by max_paths."""
-        paths = []
+        paths: List[List[int]] = []
 
         def dfs(current: int, path: List[int], visited: Set[int]):
             if len(paths) >= max_paths or len(path) > 50:  # Prune long paths
@@ -53,9 +53,9 @@ class CFG:
         dfs(self.entry, [], set())
         return paths
 
-    def analyze_path(self, path: List[int]) -> List[Dict[str, str]]:
+    def analyze_path(self, path: List[int]) -> List[Dict[str, Any]]:
         """Analyze a path for diagnostics."""
-        diagnostics = []
+        diagnostics: List[Dict[str, Any]] = []
         # Simple analysis: check for potential issues
         for block_id in path:
             block = self.blocks[block_id]
@@ -190,18 +190,18 @@ def build_cfg(func: Function) -> CFG:
 class DataflowAnalyzer:
     """Dataflow analyzer for reversible functions."""
 
-    def __init__(self, func: Function):
+    def __init__(self, func: Function) -> None:
         from ..config import load_config
 
         self.func = func
         self.cfg = build_cfg(func)
-        self.config = load_config()
+        self.config = load_config("config.json")
         self.errors: List[Dict[str, Any]] = []
 
     def analyze(self) -> List[Dict[str, Any]]:
         """Analyze the function for reversible issues."""
         self.errors = []
-        if not any(attr.name == "reversible" for attr in self.func.attrs):
+        if not any(attr.name == "reversible" for attr in (self.func.attrs or [])):
             return self.errors  # Only analyze reversible functions
 
         registers = [f"R{i}" for i in range(8)]
@@ -210,8 +210,8 @@ class DataflowAnalyzer:
             statements: List[Statement],
             path_let: Set[str],
             path_written: Set[str],
-            current_path: List,
-            errors: List,
+            current_path: List[int],
+            errors: List[Dict[str, Any]],
         ):
             for stmt_idx, stmt in enumerate(statements):
                 if isinstance(stmt, Instr):
@@ -233,7 +233,7 @@ class DataflowAnalyzer:
                                     )
                                 path_written.add(op)
                 elif isinstance(stmt, If):
-                    then_path = current_path + ["then"]
+                    then_path = current_path + [0]
                     analyze_statements(
                         stmt.then_block,
                         path_let.copy(),
@@ -242,7 +242,7 @@ class DataflowAnalyzer:
                         errors,
                     )
                     if stmt.else_block:
-                        else_path = current_path + ["else"]
+                        else_path = current_path + [1]
                         analyze_statements(
                             stmt.else_block,
                             path_let.copy(),
@@ -251,7 +251,7 @@ class DataflowAnalyzer:
                             errors,
                         )
                 elif isinstance(stmt, Loop):
-                    loop_path = current_path + ["loop"]
+                    loop_path = current_path + [0]
                     analyze_statements(
                         stmt.body,
                         path_let.copy(),
@@ -261,9 +261,9 @@ class DataflowAnalyzer:
                     )
 
         # Analyze all paths from CFG
-        for path in self.cfg.enumerate_paths(self.config.max_paths):
-            path_let = set()
-            path_written = set()
+        for path in self.cfg.enumerate_paths(getattr(self.config, 'max_paths', 100)):
+            path_let: Set[str] = set()
+            path_written: Set[str] = set()
             for block_id in path:
                 block = self.cfg.get_block(block_id)
                 block_path = [block_id]

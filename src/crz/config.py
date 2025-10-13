@@ -1,13 +1,13 @@
 """CRZ64I configuration loader."""
 
 import json
-from typing import Dict, Any
+from typing import Any, Dict
 
 
-def load_config() -> Dict[str, Any]:
+def load_config(file_path: str = "config.json") -> Dict[str, Any]:
     """Load configuration from config.json or return defaults."""
     try:
-        with open("config.json", "r") as f:
+        with open(file_path, "r") as f:
             return json.load(f)
     except FileNotFoundError:
         # Default config
@@ -55,9 +55,9 @@ def load_config() -> Dict[str, Any]:
 class Config:
     """Configuration class."""
 
-    def __init__(self, config_dict=None):
+    def __init__(self, config_dict=None) -> None:
         if config_dict is None:
-            config_dict = load_config()
+            config_dict = load_config("config.json")
         self.energy = config_dict["energy"]
         self.thermal = config_dict["thermal"]
         self.cycles = config_dict.get("cycles", {})

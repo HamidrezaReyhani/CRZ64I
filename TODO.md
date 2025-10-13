@@ -1,30 +1,19 @@
-# TODO: Fix FUSED_LOAD_ADD Semantics Preservation
+# TODO: Fix MyPy Errors
 
-## Information Gathered
-- **Problem**: Current fusion bypasses LOAD destination (r1), causing semantic mismatch between uncompiled and compiled versions. Uncompiled writes to r1, compiled does not.
-- **Files Involved**:
-  - `src/crz/compiler/passes.py`: Contains fusion logic in `apply_fusion_pass_safe`. Currently builds fused_args as [add_dst, load_addr, imm] for LOAD+ADD.
-  - `src/crz/simulator/simulator.py`: Handles FUSED_LOAD_ADD with 3 operands (rd, addr, imm), setting rd = memory[addr] + imm.
-  - `examples/micro_add.crz`: Test case with LOAD r1, [a+i]; ADD r2, r1, 5; fusion should preserve r1 write.
-  - `tests/test_semantic_equivalence.py`: Checks state equivalence; currently fails due to r1 difference.
-  - `tools/measure_micro_add.py`: Benchmark script; needs to pass after fix.
-- **Current Behavior**: Fused instruction only writes to ADD destination, losing LOAD destination.
-- **Required Fix**: Change fused args to [load_dst, add_dst, load_addr, imm]; simulator loads into load_dst and adds into add_dst.
+## Files to Fix
+- [ ] src/crz/compiler/ast.py: Handle None in attrs for extend and iter
+- [ ] src/crz/compiler/passes.py: Handle None in config unpacking, add type annotations, fix redefinition of apply_fusion_pass_safe
+- [ ] src/crz/compiler/semantic.py: Fix meta access for line/column, handle untyped functions
+- [ ] src/crz/simulator/simulator.py: Fix dict entry type
+- [ ] src/crz/compiler/dataflow.py: Fix list type for current_path
+- [ ] src/crz/cli/simulator_cli.py: Handle None iterable, add annotations, fix return
+- [ ] src/crz/cli/compiler_cli.py: Fix DataflowAnalyzer arg type, add annotations, handle None iterables
 
-## Plan
-1. **Backup Files**: Create backups of passes.py and simulator.py.
-2. **Edit passes.py**: Update `apply_fusion_pass_safe` to build 4-arg fused_args for LOAD+ADD: [load_dst, add_dst, load_addr, imm].
-3. **Edit simulator.py**: Update `execute_op` for FUSED_LOAD_ADD to handle 4 operands (load_dst, add_dst, mem_ref, imm), loading into load_dst and adding into add_dst. Maintain backward compatibility for 3 operands.
-4. **Test Diagnostic Script**: Run the provided Python script to check uncompiled vs compiled states.
-5. **Run Semantic Test**: Execute `tests/test_semantic_equivalence.py` to verify equivalence.
-6. **Run Benchmark**: Execute `tools/measure_micro_add.py` with N=10000, runs=5, verbose, out=bench/result_fixed2.csv.
-
-## Dependent Files to Edit
-- `src/crz/compiler/passes.py`
-- `src/crz/simulator/simulator.py`
-
-## Followup Steps
-- After edits, run diagnostic script.
-- If semantic test passes, run benchmark.
-- If issues, debug and re-edit.
-- Ensure no regressions in other tests.
+## Steps
+1. Fix ast.py: In Program.to_json, check if attrs is None before extend and iter.
+2. Fix passes.py: In run_passes, handle config.get returns None, add type for config, remove duplicate function.
+3. Fix semantic.py: In log_issue, meta is dict, access .get('line'), .get('column').
+4. Fix simulator.py: In thermal_map, ensure values are float.
+5. Fix dataflow.py: Change current_path to List[int].
+6. Fix simulator_cli.py: Handle None in sim.run, add type for pass_config, fix return type.
+7. Fix compiler_cli.py: Filter decl to Function, add type for pass_config, handle None in issues.

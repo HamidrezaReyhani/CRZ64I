@@ -39,3 +39,6 @@ if args.sim_clock_hz is not None:
 
 p.write_text(text)
 print("Updated src/crz/config.py (backup at {})".format(bak))
+
+
+

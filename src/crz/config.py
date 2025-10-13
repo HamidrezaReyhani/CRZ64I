@@ -12,12 +12,12 @@ def load_config() -> Dict[str, Any]:
         # Default config
         return {
             "energy": {
-                "ADD": 6e-08,  # Updated with measured energy per op in Joules
+                "ADD": 4.5e-08,  # Updated with measured energy per op in Joules
                 "SUB": 6e-08,
                 "MUL": 1.2e-6,
                 "DIV": 3.0e-6,
-                "LOAD": 3.5e-07,  # Updated with measured per load
-                "STORE": 3.5e-07,
+                "LOAD": 4.0000000000000003e-07,  # Updated with measured per load
+                "STORE": 4.0000000000000003e-07,
                 "JMP": 1e-8,
                 "BR_IF": 2.5e-7,
                 "LABEL": 0.0,
@@ -32,12 +32,12 @@ def load_config() -> Dict[str, Any]:
             },
             # real-time cycle cost model: cycles per opcode (sim cycles)
             "cycles": {
-                "ADD": 1,
+                "ADD": 4.5e-08,
                 "SUB": 1,
                 "MUL": 3,
                 "DIV": 10,
-                "LOAD": 3,
-                "STORE": 3,
+                "LOAD": 4.0000000000000003e-07,
+                "STORE": 4.0000000000000003e-07,
                 "JMP": 1,
                 "BR_IF": 2,
                 "LABEL": 0,
@@ -46,7 +46,7 @@ def load_config() -> Dict[str, Any]:
             },
             "cores": 4,
             "energy_unit": 1.0,  # Updated to Joules
-            "sim_clock_hz": 17183382.42,  # Measured from calibrate_cycles.py
+            "sim_clock_hz": 343180684.9654721,  # Measured from calibrate_cycles.py
             "memory_limit": None,  # optional hard cap, or None for no limit
         }
 

@@ -3,6 +3,7 @@
 import json
 from typing import Dict, Any
 
+
 def load_config() -> Dict[str, Any]:
     """Load configuration from config.json or return defaults."""
     try:
@@ -42,7 +43,7 @@ def load_config() -> Dict[str, Any]:
                 "BR_IF": 2,
                 "LABEL": 0,
                 "BRANCH": 1,
-                "FUSED_LOAD_ADD": 2   # cheaper than LOAD(3)+ADD(1)=4
+                "FUSED_LOAD_ADD": 2,  # cheaper than LOAD(3)+ADD(1)=4
             },
             "cores": 4,
             "energy_unit": 1.0,  # Updated to Joules

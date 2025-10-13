@@ -19,7 +19,9 @@ class BasicBlock:
         self.successors: List[int] = []
 
     def __repr__(self):
-        return f"Block {self.id}: {len(self.statements)} statements -> {self.successors}"
+        return (
+            f"Block {self.id}: {len(self.statements)} statements -> {self.successors}"
+        )
 
 
 class CFG:
@@ -35,6 +37,7 @@ class CFG:
     def enumerate_paths(self, max_paths: int = 100) -> List[List[int]]:
         """Enumerate paths from entry to exit, bounded by max_paths."""
         paths = []
+
         def dfs(current: int, path: List[int], visited: Set[int]):
             if len(paths) >= max_paths or len(path) > 50:  # Prune long paths
                 return
@@ -46,6 +49,7 @@ class CFG:
                     if succ not in visited:
                         dfs(succ, path, visited.copy())
             path.pop()
+
         dfs(self.entry, [], set())
         return paths
 
@@ -60,7 +64,13 @@ class CFG:
                     # Example: check for division by zero potential
                     if stmt.mnemonic == "DIV" and len(stmt.operands) > 1:
                         if stmt.operands[1] == "0":
-                            diagnostics.append({"type": "warning", "message": "Potential division by zero", "block": block_id})
+                            diagnostics.append(
+                                {
+                                    "type": "warning",
+                                    "message": "Potential division by zero",
+                                    "block": block_id,
+                                }
+                            )
         return diagnostics
 
 
@@ -182,6 +192,7 @@ class DataflowAnalyzer:
 
     def __init__(self, func: Function):
         from ..config import load_config
+
         self.func = func
         self.cfg = build_cfg(func)
         self.config = load_config()
@@ -195,7 +206,13 @@ class DataflowAnalyzer:
 
         registers = [f"R{i}" for i in range(8)]
 
-        def analyze_statements(statements: List[Statement], path_let: Set[str], path_written: Set[str], current_path: List, errors: List):
+        def analyze_statements(
+            statements: List[Statement],
+            path_let: Set[str],
+            path_written: Set[str],
+            current_path: List,
+            errors: List,
+        ):
             for stmt_idx, stmt in enumerate(statements):
                 if isinstance(stmt, Instr):
                     if stmt.mnemonic == "LET":
@@ -206,22 +223,42 @@ class DataflowAnalyzer:
                         for op in stmt.operands:
                             if op in registers:
                                 if op not in path_let and op not in path_written:
-                                    errors.append({
-                                        "type": "error",
-                                        "message": f"Write to {op} without prior let",
-                                        "path": current_path.copy(),
-                                        "stmt_idx": stmt_idx
-                                    })
+                                    errors.append(
+                                        {
+                                            "type": "error",
+                                            "message": f"Write to {op} without prior let",
+                                            "path": current_path.copy(),
+                                            "stmt_idx": stmt_idx,
+                                        }
+                                    )
                                 path_written.add(op)
                 elif isinstance(stmt, If):
-                    then_path = current_path + ['then']
-                    analyze_statements(stmt.then_block, path_let.copy(), path_written.copy(), then_path, errors)
+                    then_path = current_path + ["then"]
+                    analyze_statements(
+                        stmt.then_block,
+                        path_let.copy(),
+                        path_written.copy(),
+                        then_path,
+                        errors,
+                    )
                     if stmt.else_block:
-                        else_path = current_path + ['else']
-                        analyze_statements(stmt.else_block, path_let.copy(), path_written.copy(), else_path, errors)
+                        else_path = current_path + ["else"]
+                        analyze_statements(
+                            stmt.else_block,
+                            path_let.copy(),
+                            path_written.copy(),
+                            else_path,
+                            errors,
+                        )
                 elif isinstance(stmt, Loop):
-                    loop_path = current_path + ['loop']
-                    analyze_statements(stmt.body, path_let.copy(), path_written.copy(), loop_path, errors)
+                    loop_path = current_path + ["loop"]
+                    analyze_statements(
+                        stmt.body,
+                        path_let.copy(),
+                        path_written.copy(),
+                        loop_path,
+                        errors,
+                    )
 
         # Analyze all paths from CFG
         for path in self.cfg.enumerate_paths(self.config.max_paths):
@@ -230,11 +267,11 @@ class DataflowAnalyzer:
             for block_id in path:
                 block = self.cfg.get_block(block_id)
                 block_path = [block_id]
-                analyze_statements(block.statements, path_let, path_written, block_path, self.errors)
+                analyze_statements(
+                    block.statements, path_let, path_written, block_path, self.errors
+                )
 
         return self.errors
-
-
 
 
 def analyze_file(filepath: str) -> Dict[str, List[Dict[str, Any]]]:
@@ -263,4 +300,3 @@ def analyze_text(txt: str, max_paths: int = 100, max_len: int = 100) -> Dict[str
     else:
         status = "ok"
     return {"status": status}
-

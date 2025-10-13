@@ -18,7 +18,9 @@ def main() -> int:
 
     run_parser = subparsers.add_parser("run", help="Run simulation")
     run_parser.add_argument("file", help="CRZ64I source file")
-    run_parser.add_argument("-n", "--iterations", type=int, default=1, help="Number of iterations")
+    run_parser.add_argument(
+        "-n", "--iterations", type=int, default=1, help="Number of iterations"
+    )
     run_parser.add_argument("--report", help="Output CSV report file")
 
     args = parser.parse_args()
@@ -33,6 +35,7 @@ def main() -> int:
         # optimized = run_passes(program, ["fusion", "energy_profile"], pass_config)
         # sim_ir = codegen_sim(optimized)
         from crz.compiler.codegen_sim import codegen
+
         sim_ir = codegen(program)
         sim = Simulator(config)
         total_cycles = 0
@@ -64,10 +67,10 @@ def run_file(file_path):
     optimized = run_passes(program, ["fusion", "energy_profile"], pass_config)
     sim_ir = codegen_sim(optimized)
     sim = Simulator(config)
-    if 'fibonacci' in file_path:
-        sim.regs['r0'] = 10
+    if "fibonacci" in file_path:
+        sim.regs["r0"] = 10
     sim.run_program(sim_ir)
-    return {'regs': sim.regs, 'flags': sim.flags, 'memory': sim.memory}
+    return {"regs": sim.regs, "flags": sim.flags, "memory": sim.memory}
 
 
 if __name__ == "__main__":

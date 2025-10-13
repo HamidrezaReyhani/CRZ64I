@@ -5,7 +5,7 @@ from ..simulator.simulator import Simulator
 
 
 def run_roundtrip(filename):
-    with open(filename, 'r') as f:
+    with open(filename, "r") as f:
         code = f.read()
     ast = parse_text(code)
     ir = codegen(ast)

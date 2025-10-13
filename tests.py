@@ -7,6 +7,7 @@ from compiler import CRZCompiler
 from assembler import CRZAssembler
 from simulator import CRZSimulator
 
+
 def benchmark(code):
     parser = CRZParser()
     instructions, labels = parser.parse(code)
@@ -16,27 +17,32 @@ def benchmark(code):
     bytecode = assembler.assemble(optimized, labels)
     simulator = CRZSimulator()
     start = time.time()
-    cycles, energy, temperature = simulator.run(optimized)  # Run on instructions, not bytecode for simplicity
+    cycles, energy, temperature = simulator.run(
+        optimized
+    )  # Run on instructions, not bytecode for simplicity
     end = time.time()
-    print(f"Cycles: {cycles}, Energy: {energy}, Temperature: {temperature:.2f}, Time: {end - start:.4f}s")
+    print(
+        f"Cycles: {cycles}, Energy: {energy}, Temperature: {temperature:.2f}, Time: {end - start:.4f}s"
+    )
     return cycles, energy, temperature
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     # Microbenchmarks for critical instructions
     microbenchmarks = {
-        'ADD': "ADD R1, R0, 10\nHALT",
-        'LOAD': "LOAD R1, [R0]\nHALT",
-        'STORE': "STORE R0, [R1]\nHALT",
-        'VDOT32': "VDOT32 R1, R2, R3\nHALT",
-        'FMA': "FMA R1, R2, R3, R4\nHALT",
-        'BR_IF': "BR_IF LT R0, 10, _end\nHALT\n_end: NOP",
+        "ADD": "ADD R1, R0, 10\nHALT",
+        "LOAD": "LOAD R1, [R0]\nHALT",
+        "STORE": "STORE R0, [R1]\nHALT",
+        "VDOT32": "VDOT32 R1, R2, R3\nHALT",
+        "FMA": "FMA R1, R2, R3, R4\nHALT",
+        "BR_IF": "BR_IF LT R0, 10, _end\nHALT\n_end: NOP",
     }
-    
+
     print("Baseline Microbenchmarks:")
     for instr, code in microbenchmarks.items():
         print(f"\n{instr}:")
         benchmark(code)
-    
+
     # Full Workload: Simple GEMM (Matrix Multiply Accumulate)
     print("\nFull Workload Benchmark: GEMM")
     gemm_code = """
@@ -48,7 +54,7 @@ if __name__ == '__main__':
     HALT;
     """
     benchmark(gemm_code)
-    
+
     # Example full benchmark
     print("\nFull Example Benchmark:")
     code = """
@@ -76,7 +82,9 @@ if __name__ == '__main__':
 
     # Test Reversible Undo
     print("\nTesting Reversible Undo:")
-    rev_code = "ADD R1, R0, 5\nSAVE_DELTA R1, R0\nADD R1, R0, 10\nRESTORE_DELTA R1, R0\nHALT"
+    rev_code = (
+        "ADD R1, R0, 5\nSAVE_DELTA R1, R0\nADD R1, R0, 10\nRESTORE_DELTA R1, R0\nHALT"
+    )
     parser = CRZParser()
     instructions, labels = parser.parse(rev_code)
     compiler = CRZCompiler()

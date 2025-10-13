@@ -7,13 +7,14 @@ from compiler import CRZCompiler
 from assembler import CRZAssembler
 from simulator import CRZSimulator
 
+
 def main():
     if len(sys.argv) < 2:
         print("Usage: python main.py <command> [file]")
         return
 
     command = sys.argv[1]
-    if command == 'test':
+    if command == "test":
         # Run test
         code = """
         ADD R1, R0, 10;
@@ -27,34 +28,39 @@ def main():
         instructions, labels = parser.parse(code)
         # Resolve labels
         for i, instr in enumerate(instructions):
-            if instr['mnemonic'] == 'BR_IF':
-                label = instr['operands'][3]
+            if instr["mnemonic"] == "BR_IF":
+                label = instr["operands"][3]
                 if label in labels:
                     offset = labels[label] - i
-                    instr['operands'][3] = str(offset)
+                    instr["operands"][3] = str(offset)
         compiler = CRZCompiler()
         optimized = compiler.compile(instructions)
         simulator = CRZSimulator()
         cycles, energy, temperature = simulator.run(optimized)
-        print(f"Simulation: Cycles={cycles}, Energy={energy}, Temperature={temperature}")
-    elif command == 'run' and len(sys.argv) > 2:
+        print(
+            f"Simulation: Cycles={cycles}, Energy={energy}, Temperature={temperature}"
+        )
+    elif command == "run" and len(sys.argv) > 2:
         file = sys.argv[2]
-        with open(file, 'r') as f:
+        with open(file, "r") as f:
             code = f.read()
         parser = CRZParser()
         instructions, labels = parser.parse(code)
         # Resolve labels
         for i, instr in enumerate(instructions):
-            if instr['mnemonic'] == 'BR_IF':
-                label = instr['operands'][3]
+            if instr["mnemonic"] == "BR_IF":
+                label = instr["operands"][3]
                 if label in labels:
                     offset = labels[label] - i
-                    instr['operands'][3] = str(offset)
+                    instr["operands"][3] = str(offset)
         compiler = CRZCompiler()
         optimized = compiler.compile(instructions)
         simulator = CRZSimulator()
         cycles, energy, temperature = simulator.run(optimized)
-        print(f"Run {file}: Cycles={cycles}, Energy={energy}, Temperature={temperature}")
+        print(
+            f"Run {file}: Cycles={cycles}, Energy={energy}, Temperature={temperature}"
+        )
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

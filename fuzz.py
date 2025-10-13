@@ -9,14 +9,26 @@ from crz.compiler.codegen_sim import codegen
 
 def fuzz_parser(grammar_file, iterations=1000, timeout=0.1):
     """Fuzz the parser with random inputs."""
-    with open(grammar_file, 'r') as f:
+    with open(grammar_file, "r") as f:
         grammar = f.read()
-    parser = Lark(grammar, start="program", parser="earley", lexer="dynamic", propagate_positions=True, cache=False)
+    parser = Lark(
+        grammar,
+        start="program",
+        parser="earley",
+        lexer="dynamic",
+        propagate_positions=True,
+        cache=False,
+    )
     crashes = 0
     for i in range(iterations):
         # Generate random string
         length = random.randint(1, 100)
-        txt = ''.join(random.choice('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 \n\t{}();[],.') for _ in range(length))
+        txt = "".join(
+            random.choice(
+                "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 \n\t{}();[],."
+            )
+            for _ in range(length)
+        )
         try:
             parser.parse(txt)
         except LarkError:
@@ -37,11 +49,11 @@ def generate_random_program(max_len=50):
     ops = ["ADD", "SUB", "MUL", "DIV", "MOV", "CMP", "JMP", "JZ", "JNZ", "CALL", "RET"]
     regs = [f"R{i}" for i in range(8)]
     labels = [f"label{i}" for i in range(5)]
-    
+
     program = []
     program.append("#[fusion]")
     program.append("fn fuzz_func() {")
-    
+
     for _ in range(random.randint(1, max_len)):
         op = random.choice(ops)
         if op in ["ADD", "SUB", "MUL", "DIV"]:
@@ -55,17 +67,23 @@ def generate_random_program(max_len=50):
         elif op == "RET":
             args = []
         program.append(f"    {op} {', '.join(args)};")
-    
+
     program.append("}")
-    return '\n'.join(program)
+    return "\n".join(program)
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Fuzz CRZ compiler with random programs.")
-    parser.add_argument("--count", type=int, default=10, help="Number of programs to generate")
-    parser.add_argument("--max_len", type=int, default=50, help="Max operations per program")
+    parser = argparse.ArgumentParser(
+        description="Fuzz CRZ compiler with random programs."
+    )
+    parser.add_argument(
+        "--count", type=int, default=10, help="Number of programs to generate"
+    )
+    parser.add_argument(
+        "--max_len", type=int, default=50, help="Max operations per program"
+    )
     args = parser.parse_args()
-    
+
     for i in range(args.count):
         prog = generate_random_program(args.max_len)
         print(f"Generated program {i+1}:")

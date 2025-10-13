@@ -9,7 +9,8 @@ import csv
 import time
 import sys
 from pathlib import Path
-sys.path.insert(0, '../src')
+
+sys.path.insert(0, "../src")
 from crz.simulator.simulator import Simulator
 from crz.runtime.runtime import Runtime
 from crz.config import Config

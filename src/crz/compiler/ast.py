@@ -11,13 +11,15 @@ from typing import List, Optional, Tuple, Union, Dict, Any
 
 def to_json_dict(obj):
     d = asdict(obj)
+
     def remove_meta(o):
         if isinstance(o, dict):
-            return {k: remove_meta(v) for k, v in o.items() if k != 'meta'}
+            return {k: remove_meta(v) for k, v in o.items() if k != "meta"}
         elif isinstance(o, list):
             return [remove_meta(item) for item in o]
         else:
             return o
+
     return remove_meta(d)
 
 
@@ -103,8 +105,8 @@ class If:
     """Represents an if statement."""
 
     condition: str
-    then_block: List['Statement']
-    else_block: Optional[List['Statement']]
+    then_block: List["Statement"]
+    else_block: Optional[List["Statement"]]
     attrs: List[Attribute] = None
     meta: Optional[Dict[str, int]] = None
 
@@ -123,7 +125,7 @@ class Loop:
     var: str
     start: str
     end: str
-    body: List['Statement']
+    body: List["Statement"]
     attrs: List[Attribute] = None
     meta: Optional[Dict[str, int]] = None
 
@@ -169,6 +171,9 @@ class Program:
         functions = [d for d in self.declarations if isinstance(d, Function)]
         attrs = []
         for d in self.declarations:
-            if hasattr(d, 'attrs'):
+            if hasattr(d, "attrs"):
                 attrs.extend(d.attrs)
-        return {"functions": [f.to_json() for f in functions], "attrs": [a.to_json() for a in attrs]}
+        return {
+            "functions": [f.to_json() for f in functions],
+            "attrs": [a.to_json() for a in attrs],
+        }

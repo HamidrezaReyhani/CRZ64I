@@ -5,6 +5,7 @@ Quick CRZ64I Testing Examples
 
 from compiler import CRZCompiler
 
+
 def test_simple():
     """Test simple compilation"""
     compiler = CRZCompiler()
@@ -22,6 +23,7 @@ def test_simple():
     except Exception as e:
         print(f"❌ Simple test FAILED: {e}")
         return False
+
 
 def test_attributes():
     """Test attribute handling"""
@@ -43,6 +45,7 @@ def test_attributes():
     except Exception as e:
         print(f"❌ Attributes test FAILED: {e}")
         return False
+
 
 def test_multiple_functions():
     """Test multiple functions"""
@@ -69,15 +72,12 @@ def test_multiple_functions():
         print(f"❌ Multiple functions test FAILED: {e}")
         return False
 
+
 def main():
     print("🚀 CRZ64I Quick Tests")
     print("=" * 30)
 
-    tests = [
-        test_simple,
-        test_attributes,
-        test_multiple_functions
-    ]
+    tests = [test_simple, test_attributes, test_multiple_functions]
 
     passed = 0
     total = len(tests)
@@ -92,6 +92,7 @@ def main():
         print("🎉 All tests passed! CRZ64I is working correctly.")
     else:
         print("⚠️  Some tests failed. Check the error messages above.")
+
 
 if __name__ == "__main__":
     main()

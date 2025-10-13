@@ -59,7 +59,9 @@ class SimulatorCodegen:
     def generate_instr(self, instr: Instr) -> str:
         """Generate code for an instruction."""
         op = self.op_map.get(instr.mnemonic, instr.mnemonic.lower())
-        args = ", ".join(f"'{op}'" if isinstance(op, str) else str(op) for op in instr.operands)
+        args = ", ".join(
+            f"'{op}'" if isinstance(op, str) else str(op) for op in instr.operands
+        )
         return f"    simulator.{op}({args})\n"
 
     def generate_program(self, program: List[Function]) -> str:
@@ -76,10 +78,6 @@ def generate_simulator_code(program: List[Function]) -> str:
     """Generate simulator Python code from program AST."""
     codegen = SimulatorCodegen()
     return codegen.generate_program(program)
-
-
-
-
 
 
 def lower_statement(stmt, config):
@@ -106,15 +104,31 @@ def lower_statement(stmt, config):
     else:
         return []
 
+
 def lower_expr_assign(target, expr, config):
     """Lower assignment expr to instructions."""
-    if '+' in expr:
-        left, right = expr.split('+', 1)
+    if "+" in expr:
+        left, right = expr.split("+", 1)
         left = left.strip()
         right = right.strip()
-        return [{"op": "ADD", "args": [target, left, right], "fused": False, "energy_est": config.energy.get("ADD", 0.0)}]
+        return [
+            {
+                "op": "ADD",
+                "args": [target, left, right],
+                "fused": False,
+                "energy_est": config.energy.get("ADD", 0.0),
+            }
+        ]
     else:
-        return [{"op": "ADD", "args": [target, expr, "r0"], "fused": False, "energy_est": config.energy.get("ADD", 0.0)}]
+        return [
+            {
+                "op": "ADD",
+                "args": [target, expr, "r0"],
+                "fused": False,
+                "energy_est": config.energy.get("ADD", 0.0),
+            }
+        ]
+
 
 def lower_loop(loop, config):
     var = loop.var
@@ -124,20 +138,35 @@ def lower_loop(loop, config):
     end_label = f"loop_end_{id(loop)}"
     ir = []
     # init var = start
-    ir.append({"op": "ADD", "args": [var, start, "r0"], "fused": False, "energy_est": config.energy.get("ADD", 0.0)})
+    ir.append(
+        {
+            "op": "ADD",
+            "args": [var, start, "r0"],
+            "fused": False,
+            "energy_est": config.energy.get("ADD", 0.0),
+        }
+    )
     # label loop
     ir.append({"op": "LABEL", "args": [loop_label]})
     # body
     for s in loop.body:
         ir.extend(lower_statement(s, config))
     # add var, var, 1
-    ir.append({"op": "ADD", "args": [var, var, "1"], "fused": False, "energy_est": config.energy.get("ADD", 0.0)})
+    ir.append(
+        {
+            "op": "ADD",
+            "args": [var, var, "1"],
+            "fused": False,
+            "energy_est": config.energy.get("ADD", 0.0),
+        }
+    )
     # br_if LT var, end, loop_label
     ir.append({"op": "BR_IF", "args": ["LT", var, end, loop_label]})
     # label end
     ir.append({"op": "LABEL", "args": [end_label]})
 
     return ir
+
 
 def lower_if(if_stmt, config):
     then_label = f"then_{id(if_stmt)}"
@@ -162,19 +191,27 @@ def lower_if(if_stmt, config):
 
     return ir
 
+
 def codegen(program, apply_fusion=True):
     """Generate simulator IR with fused flags and energy estimates."""
     from ..config import Config
     from .passes import apply_fusion_to_ir
+
     func = program.declarations[0]
     config = Config()
     ir = []
     for i, (name, _) in enumerate(func.params):
-        ir.append({"op": "ADD", "args": [name, f"r{i}", "r0"], "fused": False, "energy_est": config.energy.get("ADD", 0.0)})
+        ir.append(
+            {
+                "op": "ADD",
+                "args": [name, f"r{i}", "r0"],
+                "fused": False,
+                "energy_est": config.energy.get("ADD", 0.0),
+            }
+        )
     for stmt in func.body:
         ir.extend(lower_statement(stmt, config))
     # Apply fusion to IR if requested
     if apply_fusion:
         ir = apply_fusion_to_ir(ir)
     return ir
-

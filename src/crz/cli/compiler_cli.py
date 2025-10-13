@@ -29,11 +29,15 @@ def main() -> int:
 
     run_parser = subparsers.add_parser("run", help="Compile and run simulation")
     run_parser.add_argument("input", help="Input CRZ64I file")
-    run_parser.add_argument("-n", "--iterations", type=int, default=1, help="Iterations")
+    run_parser.add_argument(
+        "-n", "--iterations", type=int, default=1, help="Iterations"
+    )
 
     bench_parser = subparsers.add_parser("bench", help="Run benchmarks")
     bench_parser.add_argument("dir", help="Directory with .crz files")
-    bench_parser.add_argument("--out", help="Output CSV file", default="bench_results.csv")
+    bench_parser.add_argument(
+        "--out", help="Output CSV file", default="bench_results.csv"
+    )
 
     args = parser.parse_args()
 
@@ -50,7 +54,7 @@ def main() -> int:
                 return 1
             # Dataflow check
             for decl in program.declarations:
-                if hasattr(decl, 'name'):
+                if hasattr(decl, "name"):
                     df_analyzer = DataflowAnalyzer(decl)
                     df_issues = df_analyzer.analyze()
                     issues.extend(df_issues)
@@ -60,9 +64,19 @@ def main() -> int:
                 return 1
             # Passes
             config = {}
-            optimized = run_passes(program, ["fusion", "reversible_emulation", "energy_profile"], config)
+            optimized = run_passes(
+                program, ["fusion", "reversible_emulation", "energy_profile"], config
+            )
             ir = codegen_sim(optimized)
-            ir_json = [{"op": op.op, "args": op.args, "fused": op.fused, "metadata": op.metadata} for op in ir]
+            ir_json = [
+                {
+                    "op": op.op,
+                    "args": op.args,
+                    "fused": op.fused,
+                    "metadata": op.metadata,
+                }
+                for op in ir
+            ]
             output = args.output or "out.ir.json"
             with open(output, "w") as f:
                 json.dump(ir_json, f, indent=2)
@@ -91,7 +105,9 @@ def main() -> int:
                     total_energy += energy
                     max_temp = max(max_temp, temp)
                     progress.advance(task)
-            console.print(f"Cycles: {total_cycles}, Energy: {total_energy:.2f}, Max Temp: {max_temp:.2f}")
+            console.print(
+                f"Cycles: {total_cycles}, Energy: {total_energy:.2f}, Max Temp: {max_temp:.2f}"
+            )
         except Exception as e:
             console.print(f"[red]Error: {e}[/red]")
             return 1
@@ -108,14 +124,25 @@ def main() -> int:
                     code = file.read_text()
                     program = parse(code)
                     pass_config = {}
-                    optimized = run_passes(program, ["fusion", "energy_profile"], pass_config)
+                    optimized = run_passes(
+                        program, ["fusion", "energy_profile"], pass_config
+                    )
                     sim_ir = codegen_sim(optimized)
                     sim = Simulator(config)
                     cycles, energy, temp, _ = sim.run(sim_ir, metrics=True)
-                    results.append({"name": file.stem, "cycles": cycles, "energy": energy, "temp": temp})
+                    results.append(
+                        {
+                            "name": file.stem,
+                            "cycles": cycles,
+                            "energy": energy,
+                            "temp": temp,
+                        }
+                    )
                     progress.advance(task)
             with open(args.out, "w", newline="") as f:
-                writer = csv.DictWriter(f, fieldnames=["name", "cycles", "energy", "temp"])
+                writer = csv.DictWriter(
+                    f, fieldnames=["name", "cycles", "energy", "temp"]
+                )
                 writer.writeheader()
                 writer.writerows(results)
             console.print(f"[green]Benchmarks written to {args.out}[/green]")

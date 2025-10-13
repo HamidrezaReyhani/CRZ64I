@@ -19,7 +19,10 @@ def test_reversible_store_without_let():
     issues = analyzer.analyze(program)
     assert len(issues) == 1
     assert issues[0]["type"] == "error"
-    assert "Write to R0 in function main without prior let tmp = R0 or #[no_erase]" in issues[0]["message"]
+    assert (
+        "Write to R0 in function main without prior let tmp = R0 or #[no_erase]"
+        in issues[0]["message"]
+    )
     assert issues[0]["line"] == 3  # Assuming line 3 is the STORE
 
 

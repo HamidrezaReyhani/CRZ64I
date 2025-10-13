@@ -123,7 +123,11 @@ fn main() {
     config = {"energy_table": {"ADD": {"energy": 1.0}, "MUL": {"energy": 5.0}}}
     result = run_passes(program, ["energy_profile"], config)
     func = result.declarations[0]
-    add_energy = next((attr for attr in func.body[0].attrs if attr.name == "energy"), None)
-    mul_energy = next((attr for attr in func.body[1].attrs if attr.name == "energy"), None)
+    add_energy = next(
+        (attr for attr in func.body[0].attrs if attr.name == "energy"), None
+    )
+    mul_energy = next(
+        (attr for attr in func.body[1].attrs if attr.name == "energy"), None
+    )
     assert add_energy.value == "1.0"
     assert mul_energy.value == "5.0"

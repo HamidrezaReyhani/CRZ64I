@@ -29,7 +29,7 @@ def generate_random_program(max_len=50):
         program.append(f"    {op} {', '.join(args)};")
 
     program.append("}")
-    return '\n'.join(program)
+    return "\n".join(program)
 
 
 def fuzz_simulator(iterations=100, max_len=50):

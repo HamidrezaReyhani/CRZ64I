@@ -95,7 +95,9 @@ fn main() {
     sim = Simulator()
     initial_state = {"registers": {"R1": 10}}
     cycles, energy, temp, final_state = sim.run(sim_ir, initial_state, metrics=True)
-    assert final_state["registers"]["R0"] == 15  # Assuming fused loads from memory + add
+    assert (
+        final_state["registers"]["R0"] == 15
+    )  # Assuming fused loads from memory + add
     assert energy < 5.0  # Lower energy for fused
 
 

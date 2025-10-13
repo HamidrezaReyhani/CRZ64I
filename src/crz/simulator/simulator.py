@@ -14,9 +14,8 @@ from crz.compiler.codegen_sim import codegen
 from ..compiler.ast import Instr
 
 
-
 def compile_file(path: str):
-    with open(path, 'r') as f:
+    with open(path, "r") as f:
         code = f.read()
     program = parse_text(code)
     return codegen(program)
@@ -25,7 +24,7 @@ def compile_file(path: str):
 class Simulator:
     """CRZ64I Simulator."""
 
-    def __init__(self, config = None):
+    def __init__(self, config=None):
         if config is None:
             config = Config()
         elif isinstance(config, dict):
@@ -52,9 +51,11 @@ class Simulator:
             raise ValueError(f"Memory access out of bounds: negative address {addr}")
 
         # optional max guard if config has memory_limit
-        mem_limit = getattr(self.config, 'memory_limit', None)
+        mem_limit = getattr(self.config, "memory_limit", None)
         if mem_limit is not None and addr >= mem_limit:
-            raise ValueError(f"Memory access out of bounds: requested {addr} >= memory_limit {mem_limit}")
+            raise ValueError(
+                f"Memory access out of bounds: requested {addr} >= memory_limit {mem_limit}"
+            )
 
         # auto-grow: extend underlying memory list to include addr
         if addr >= len(self.memory):
@@ -65,10 +66,10 @@ class Simulator:
     def get_val(self, s: str) -> int:
         """Get value from register or literal."""
         s = s.strip()
-        if '+' in s:
-            left, right = s.split('+', 1)
+        if "+" in s:
+            left, right = s.split("+", 1)
             return self.get_val(left) + self.get_val(right)
-        elif s.isdigit() or (s.startswith('-') and s[1:].isdigit()):
+        elif s.isdigit() or (s.startswith("-") and s[1:].isdigit()):
             return int(s)
         return self.regs.get(s, 0)
 
@@ -102,7 +103,9 @@ class Simulator:
         if hasattr(self, "update_thermal_advanced"):
             # call with mnemonic and energy_joule (function will compute dt from cycles if needed)
             try:
-                self.update_thermal_advanced(mnemonic, energy_joule, dt=dt, cycles=cost_cycles)
+                self.update_thermal_advanced(
+                    mnemonic, energy_joule, dt=dt, cycles=cost_cycles
+                )
             except TypeError:
                 # backward compatibility: if update_thermal_advanced signature differs, call older form
                 self.update_thermal_advanced(mnemonic, energy_joule)
@@ -204,7 +207,11 @@ class Simulator:
                 raise ValueError(f"FUSED_LOAD_ADD: unexpected operands {operands}")
 
             # normalize mem_ref: accept "[a + i]" or "a + i"
-            if isinstance(mem_ref, str) and mem_ref.startswith('[') and mem_ref.endswith(']'):
+            if (
+                isinstance(mem_ref, str)
+                and mem_ref.startswith("[")
+                and mem_ref.endswith("]")
+            ):
                 addr_str = mem_ref[1:-1]
             else:
                 addr_str = mem_ref
@@ -228,7 +235,9 @@ class Simulator:
 
             # account for STORE energy/cycles handled elsewhere (this op only does load+add)
             # update op counts:
-            self._op_counts["FUSED_LOAD_ADD"] = self._op_counts.get("FUSED_LOAD_ADD", 0) + 1
+            self._op_counts["FUSED_LOAD_ADD"] = (
+                self._op_counts.get("FUSED_LOAD_ADD", 0) + 1
+            )
             # energy, cycles, thermal already handled earlier in execute_op (top of function)
         elif mnemonic == "SAVE_DELTA":
             self.backup_regs = self.regs.copy()
@@ -245,24 +254,40 @@ class Simulator:
             # Simulate DMA start
             pass
         # Update flags
-        if mnemonic in ["ADD", "SUB", "MUL", "DIV", "LOAD", "FUSED_ADD_MUL", "FUSED_LOAD_ADD"]:
+        if mnemonic in [
+            "ADD",
+            "SUB",
+            "MUL",
+            "DIV",
+            "LOAD",
+            "FUSED_ADD_MUL",
+            "FUSED_LOAD_ADD",
+        ]:
             rd = operands[0]
             self.flags["Z"] = 1 if self.regs[rd] == 0 else 0
             self.flags["N"] = 1 if self.regs[rd] < 0 else 0
 
-    def update_thermal_advanced(self, mnemonic: str, energy_joule: float, dt: float = None, cycles: int = None):
+    def update_thermal_advanced(
+        self, mnemonic: str, energy_joule: float, dt: float = None, cycles: int = None
+    ):
         """Update thermal hotspots using physics-based heating over duration dt (seconds).
         energy_joule: energy consumed in this opcode (Joules).
         dt: duration in seconds (optional). If not provided, will attempt to compute using cycles and config.sim_clock_hz.
         """
-        component = "alu" if mnemonic in ["ADD", "SUB", "MUL", "DIV", "FUSED_LOAD_ADD"] else "control"
-        current_temp = self.thermal_map.get(component, self.config.thermal.get("base_temp", 25.0))
+        component = (
+            "alu"
+            if mnemonic in ["ADD", "SUB", "MUL", "DIV", "FUSED_LOAD_ADD"]
+            else "control"
+        )
+        current_temp = self.thermal_map.get(
+            component, self.config.thermal.get("base_temp", 25.0)
+        )
         ambient_temp = self.config.thermal.get("base_temp", 25.0)
         heat_capacity = self.config.thermal.get("heat_capacity", 100.0)  # J/K
         thermal_resistance = self.config.thermal.get("thermal_resistance", 0.5)  # K/W
         if dt is None:
             if cycles is not None:
-                sim_clock_hz = getattr(self.config, 'sim_clock_hz', 1.0)
+                sim_clock_hz = getattr(self.config, "sim_clock_hz", 1.0)
                 dt = cycles / float(sim_clock_hz) if sim_clock_hz > 0 else 0.0
             else:
                 # fallback small dt
@@ -270,7 +295,12 @@ class Simulator:
         # instantaneous power over dt (avoid div by zero)
         power_w = (energy_joule / dt) if dt and dt > 0.0 else 0.0
         # Newton cooling + heating: dT = (power - (T - ambient)/R) * (dt / C)
-        dT = (power_w - (current_temp - ambient_temp) / thermal_resistance) * (dt / heat_capacity) if dt and dt > 0.0 else 0.0
+        dT = (
+            (power_w - (current_temp - ambient_temp) / thermal_resistance)
+            * (dt / heat_capacity)
+            if dt and dt > 0.0
+            else 0.0
+        )
         new_temp = current_temp + dT
         self.thermal_map[component] = new_temp
 
@@ -288,13 +318,13 @@ class Simulator:
         # Pre-build labels
         self.labels = {}
         for i, op in enumerate(ops):
-            if hasattr(op, 'mnemonic') and op.mnemonic == "LABEL":
+            if hasattr(op, "mnemonic") and op.mnemonic == "LABEL":
                 self.labels[op.operands[0]] = i
             elif isinstance(op, dict) and op.get("op") == "LABEL":
                 self.labels[op["args"][0]] = i
         while self.pc < len(ops):
             op = ops[self.pc]
-            if hasattr(op, 'mnemonic'):
+            if hasattr(op, "mnemonic"):
                 mnemonic = op.mnemonic
                 operands = op.operands
             elif isinstance(op, dict):
@@ -326,4 +356,7 @@ class Simulator:
 
     def get_state(self):
         """Get current simulator state for semantic equivalence checks."""
-        return {"regs": dict(self.regs), "memory": {str(i): v for i, v in enumerate(self.memory)}}
+        return {
+            "regs": dict(self.regs),
+            "memory": {str(i): v for i, v in enumerate(self.memory)},
+        }

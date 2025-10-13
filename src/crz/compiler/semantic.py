@@ -25,17 +25,19 @@ class SemanticAnalyzer:
         self.visit_program(program)
         return self.errors + self.warnings
 
-    def log_issue(self, message: str, meta: Any, level: str = 'error'):
+    def log_issue(self, message: str, meta: Any, level: str = "error"):
         """Log an issue with location."""
         line = meta.line if meta else 0
         column = meta.column if meta else 0
-        if level == 'error':
+        if level == "error":
             self.console.print(f"[red]Error at {line}:{column}: {message}[/red]")
             self.errors.append(
                 {"type": "error", "message": message, "line": line, "column": column}
             )
         else:
-            self.console.print(f"[yellow]Warning at {line}:{column}: {message}[/yellow]")
+            self.console.print(
+                f"[yellow]Warning at {line}:{column}: {message}[/yellow]"
+            )
             self.warnings.append(
                 {"type": "warning", "message": message, "line": line, "column": column}
             )
@@ -56,7 +58,12 @@ class SemanticAnalyzer:
         self.visit_block(func.body, in_realtime, in_reversible, set(), func.name)
 
     def visit_block(
-        self, block: List[Statement], in_realtime: bool, in_reversible: bool, saved_targets: Set[str], func_name: str
+        self,
+        block: List[Statement],
+        in_realtime: bool,
+        in_reversible: bool,
+        saved_targets: Set[str],
+        func_name: str,
     ):
         """Visit a block of statements."""
         for stmt in block:
@@ -74,9 +81,13 @@ class SemanticAnalyzer:
                 reversible = in_reversible or any(
                     attr.name == "reversible" for attr in stmt.attrs
                 )
-                self.visit_block(stmt.then_block, realtime, reversible, saved_targets, func_name)
+                self.visit_block(
+                    stmt.then_block, realtime, reversible, saved_targets, func_name
+                )
                 if stmt.else_block:
-                    self.visit_block(stmt.else_block, realtime, reversible, saved_targets, func_name)
+                    self.visit_block(
+                        stmt.else_block, realtime, reversible, saved_targets, func_name
+                    )
             elif isinstance(stmt, Loop):
                 self.check_attrs(stmt.attrs, "loop", stmt.meta)
                 realtime = in_realtime or any(
@@ -85,7 +96,9 @@ class SemanticAnalyzer:
                 reversible = in_reversible or any(
                     attr.name == "reversible" for attr in stmt.attrs
                 )
-                self.visit_block(stmt.body, realtime, reversible, saved_targets, func_name)
+                self.visit_block(
+                    stmt.body, realtime, reversible, saved_targets, func_name
+                )
             elif isinstance(stmt, LocalDecl):
                 if in_reversible:
                     saved_targets.add(stmt.name)
@@ -123,7 +136,9 @@ class SemanticAnalyzer:
                 instr.meta,
             )
 
-    def check_reversible_write(self, instr: Instr, saved_targets: Set[str], func_name: str):
+    def check_reversible_write(
+        self, instr: Instr, saved_targets: Set[str], func_name: str
+    ):
         """Check reversible write."""
         write_ops = [
             "ADD",

@@ -9,7 +9,6 @@ from pathlib import Path
 from lark import Lark, Transformer, Token, Tree, v_args
 
 
-
 from .ast import (
     Attribute,
     Instr,
@@ -38,7 +37,9 @@ class CRZTransformer(Transformer):
         """Transform attribute to Attribute dataclass."""
         name = children[2]  # NAME is at index 2, already string
         value = None
-        if len(children) == 6 and children[4] is not None:  # Has value: HASH LBRA NAME ASSIGN value RBRA
+        if (
+            len(children) == 6 and children[4] is not None
+        ):  # Has value: HASH LBRA NAME ASSIGN value RBRA
             value = children[4]  # already string
         return Attribute(name=name, value=value, meta=meta)
 
@@ -55,7 +56,7 @@ class CRZTransformer(Transformer):
             left = self.transform(children[0])
             for i in range(1, len(children), 2):
                 op = children[i]
-                right = self.transform(children[i+1])
+                right = self.transform(children[i + 1])
                 left = f"{left} {op} {right}"
             return left
 
@@ -125,7 +126,9 @@ class CRZTransformer(Transformer):
     def parameter(self, children):
         """Transform parameter to (name, type) tuple."""
         name = children[0]
-        type_ = self.transform(children[2]) if len(children) > 2 else None  # NAME : type
+        type_ = (
+            self.transform(children[2]) if len(children) > 2 else None
+        )  # NAME : type
         return (name, type_)
 
     def return_type(self, children):
@@ -173,7 +176,13 @@ class CRZTransformer(Transformer):
         condition = self.transform(children[1])
         then_block = self.transform(children[2])
         else_block = self.transform(children[4]) if len(children) > 3 else None
-        return If(condition=condition, then_block=then_block, else_block=else_block, attrs=[], meta=meta)
+        return If(
+            condition=condition,
+            then_block=then_block,
+            else_block=else_block,
+            attrs=[],
+            meta=meta,
+        )
 
     @v_args(meta=True)
     def loop_statement(self, meta, children):
@@ -181,9 +190,14 @@ class CRZTransformer(Transformer):
         var = children[1]
         range_expr = self.transform(children[3])
         body = self.transform(children[4])
-        return Loop(var=var, start=range_expr[0], end=range_expr[1], body=body, attrs=[], meta=meta)
-
-
+        return Loop(
+            var=var,
+            start=range_expr[0],
+            end=range_expr[1],
+            body=body,
+            attrs=[],
+            meta=meta,
+        )
 
     def operand_list(self, children):
         """Transform operand_list to list of operand strings."""
@@ -224,14 +238,14 @@ class CRZTransformer(Transformer):
     def CONDITION(self, token):
         return token.value
 
-
-
     @v_args(meta=True)
     def instruction(self, meta, children):
         """Transform instruction to Instr dataclass."""
         mnemonic = children[0]  # already string
-        operands = children[1] if len(children) > 1 and isinstance(children[1], list) else []
-        raw = self.code[meta.start_pos:meta.end_pos]
+        operands = (
+            children[1] if len(children) > 1 and isinstance(children[1], list) else []
+        )
+        raw = self.code[meta.start_pos : meta.end_pos]
         return Instr(mnemonic=mnemonic, operands=operands, attrs=[], raw=raw, meta=meta)
 
     @v_args(meta=True)
@@ -246,7 +260,11 @@ class CRZTransformer(Transformer):
         name = children[1]  # already string
 
         # Parameters: after LPAREN, if parameter_list, transform it
-        has_params = len(children) > 3 and hasattr(children[3], 'data') and children[3].data == "parameter_list"
+        has_params = (
+            len(children) > 3
+            and hasattr(children[3], "data")
+            and children[3].data == "parameter_list"
+        )
         params = self.transform(children[3]) if has_params else []
 
         # After RPAREN: index 4 if params, else 3
@@ -255,14 +273,20 @@ class CRZTransformer(Transformer):
 
         # Return type: optional
         return_type = None
-        if i < len(children) and hasattr(children[i], 'data') and children[i].data == "return_type":
+        if (
+            i < len(children)
+            and hasattr(children[i], "data")
+            and children[i].data == "return_type"
+        ):
             return_type = self.transform(children[i])
             i += 1
 
         # Body: the block
         body = self.transform(children[i])
 
-        return Function(name=name, params=params, return_type=return_type, body=body, meta=meta)
+        return Function(
+            name=name, params=params, return_type=return_type, body=body, meta=meta
+        )
 
     @v_args(meta=True)
     def statement(self, meta, children):
@@ -271,8 +295,8 @@ class CRZTransformer(Transformer):
             return self.transform(children[0])
         attrs_list = children[0]
         stmt = self.transform(children[1])
-        if hasattr(stmt, 'attrs'):
-            stmt.attrs = attrs_list + getattr(stmt, 'attrs', [])
+        if hasattr(stmt, "attrs"):
+            stmt.attrs = attrs_list + getattr(stmt, "attrs", [])
         return stmt
 
     @v_args(meta=True)
@@ -282,8 +306,8 @@ class CRZTransformer(Transformer):
             return children[0]
         attrs_list = children[0]
         decl = children[1]
-        if hasattr(decl, 'attrs'):
-            decl.attrs = attrs_list + getattr(decl, 'attrs', [])
+        if hasattr(decl, "attrs"):
+            decl.attrs = attrs_list + getattr(decl, "attrs", [])
         return decl
 
     def block(self, children):
@@ -301,7 +325,12 @@ def create_parser() -> Lark:
     grammar_path = Path(__file__).parent / "crz64i.lark"
     grammar = grammar_path.read_text()
     return Lark(
-        grammar, start="program", parser="earley", lexer="dynamic", propagate_positions=True, cache=False
+        grammar,
+        start="program",
+        parser="earley",
+        lexer="dynamic",
+        propagate_positions=True,
+        cache=False,
     )
 
 

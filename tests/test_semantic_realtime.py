@@ -19,7 +19,10 @@ def test_realtime_violation_dma_start():
     issues = analyzer.analyze(program)
     assert len(issues) == 1
     assert issues[0]["type"] == "error"
-    assert issues[0]["message"] == "Realtime violation: DMA_START inside realtime function."
+    assert (
+        issues[0]["message"]
+        == "Realtime violation: DMA_START inside realtime function."
+    )
 
 
 def test_realtime_violation_dynamic_alloc():

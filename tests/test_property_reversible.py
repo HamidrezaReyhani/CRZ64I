@@ -8,6 +8,7 @@ from crz.simulator.simulator import Simulator
 def generate_random_small_program():
     """Generate a random small reversible program."""
     import random
+
     ops = ["ADD", "SUB", "MUL", "DIV"]
     regs = ["R0", "R1", "R2", "R3"]
     program = "#[reversible]\nfn test_func() {\n"

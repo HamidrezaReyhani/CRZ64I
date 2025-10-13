@@ -55,7 +55,7 @@ class Runtime:
         }
         print("Yielding for migration")
 
-    def migrate_to(self, new_runtime: 'Runtime'):
+    def migrate_to(self, new_runtime: "Runtime"):
         """Migrate state to new runtime."""
         if self.migration_state:
             new_runtime.simulator.regs = self.migration_state["regs"]
@@ -89,7 +89,11 @@ class Runtime:
                 if self.hints.get("thermal_hint") == "cool":
                     self.policy.apply_hint("thermal_hint", self)
                 # Thermal-aware migration
-                max_temp = max(self.simulator.thermal_map.values()) if self.simulator.thermal_map else 0
+                max_temp = (
+                    max(self.simulator.thermal_map.values())
+                    if self.simulator.thermal_map
+                    else 0
+                )
                 if max_temp > 50.0:  # Threshold
                     self.migrate_to_cooler_core()
             i += 1

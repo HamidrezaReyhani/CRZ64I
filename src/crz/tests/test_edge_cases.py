@@ -45,6 +45,7 @@ def test_thermal_threshold():
 def test_path_bounding():
     """Test dataflow path bounding."""
     from crz.compiler.dataflow import CFG, BasicBlock
+
     blocks = [BasicBlock(0, []), BasicBlock(1, [])]
     blocks[0].successors = [1]
     cfg = CFG(blocks)

@@ -8,9 +8,6 @@ from typing import Any, Dict, List, Optional
 from .ast import Function, Instr, Statement, Attribute, Loop, If, Program
 
 
-
-
-
 def apply_reversible_pass(func: Function) -> Function:
     """
     Apply reversible emulation pass: Insert SAVE_DELTA at start, RESTORE_DELTA at end.
@@ -164,6 +161,3 @@ def run_passes(program, passes, config=None):
                 func = apply_energy_pass(func, energy_table)
         optimized.append(func)
     return program.__class__(declarations=optimized)
-
-
-

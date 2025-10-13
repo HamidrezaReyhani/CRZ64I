@@ -261,7 +261,7 @@ class DataflowAnalyzer:
                     )
 
         # Analyze all paths from CFG
-        for path in self.cfg.enumerate_paths(getattr(self.config, 'max_paths', 100)):
+        for path in self.cfg.enumerate_paths(getattr(self.config, "max_paths", 100)):
             path_let: Set[str] = set()
             path_written: Set[str] = set()
             for block_id in path:

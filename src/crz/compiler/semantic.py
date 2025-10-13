@@ -25,7 +25,9 @@ class SemanticAnalyzer:
         self.visit_program(program)
         return self.errors + self.warnings
 
-    def log_issue(self, message: str, meta: Optional[Dict[str, Any]], level: str = "error"):
+    def log_issue(
+        self, message: str, meta: Optional[Dict[str, Any]], level: str = "error"
+    ):
         """Log an issue with location."""
         line = meta.get("line", 0) if meta else 0
         column = meta.get("column", 0) if meta else 0
@@ -114,7 +116,12 @@ class SemanticAnalyzer:
                     if stmt.expr in [f"R{i}" for i in range(32)]:
                         saved_targets.add(stmt.expr)
 
-    def check_attrs(self, attrs: List[Attribute], context: str, meta: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+    def check_attrs(
+        self,
+        attrs: List[Attribute],
+        context: str,
+        meta: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
         """Check if attributes are allowed in context."""
         issues = []
         allowed = {
@@ -130,12 +137,14 @@ class SemanticAnalyzer:
                 self.log_issue(
                     f"Attribute #[{attr.name}] not allowed on {context}", meta
                 )
-                issues.append({
-                    "type": "error",
-                    "message": f"Attribute #[{attr.name}] not allowed on {context}",
-                    "line": line,
-                    "column": column,
-                })
+                issues.append(
+                    {
+                        "type": "error",
+                        "message": f"Attribute #[{attr.name}] not allowed on {context}",
+                        "line": line,
+                        "column": column,
+                    }
+                )
         return issues
 
     def check_realtime_instr(self, instr: Instr):

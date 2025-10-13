@@ -65,6 +65,7 @@ def main() -> int:
 def run_file(file_path: str) -> Dict[str, Any]:
     """Run a CRZ64I file and return simulator state."""
     from crz.config import load_config
+
     config = load_config("config.json")
     code = Path(file_path).read_text()
     program = parse(code)

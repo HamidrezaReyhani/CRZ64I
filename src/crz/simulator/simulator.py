@@ -268,7 +268,11 @@ class Simulator:
             self.flags["N"] = 1 if self.regs[rd] < 0 else 0
 
     def update_thermal_advanced(
-        self, mnemonic: str, energy_joule: float, dt: Optional[float] = None, cycles: Optional[int] = None
+        self,
+        mnemonic: str,
+        energy_joule: float,
+        dt: Optional[float] = None,
+        cycles: Optional[int] = None,
     ) -> None:
         """Update thermal hotspots using physics-based heating over duration dt (seconds).
         energy_joule: energy consumed in this opcode (Joules).

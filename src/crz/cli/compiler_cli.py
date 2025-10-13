@@ -24,6 +24,7 @@ console = Console()
 
 def main() -> int:
     from crz.config import load_config
+
     config = load_config("config.json")
     parser = argparse.ArgumentParser(description="CRZ64I Compiler")
     subparsers = parser.add_subparsers(dest="command")
@@ -70,7 +71,9 @@ def main() -> int:
             # Passes
             compile_pass_config: Dict[str, Any] = {}
             optimized = run_passes(
-                program, ["fusion", "reversible_emulation", "energy_profile"], compile_pass_config
+                program,
+                ["fusion", "reversible_emulation", "energy_profile"],
+                compile_pass_config,
             )
             ir = codegen_sim(optimized)
             ir_json = [
@@ -96,7 +99,9 @@ def main() -> int:
             code = Path(args.input).read_text()
             program = parse(code)
             run_pass_config: Dict[str, Any] = {}
-            optimized = run_passes(program, ["fusion", "energy_profile"], run_pass_config)
+            optimized = run_passes(
+                program, ["fusion", "energy_profile"], run_pass_config
+            )
             sim_ir = codegen_sim(optimized)
             sim = Simulator(run_config)
             with Progress() as progress:

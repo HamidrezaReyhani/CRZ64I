@@ -1,0 +1,7 @@
+*.pyc
+__pycache__/
+bench/*.csv
+bench/*.json
+src.bak/
+tools.bak/
+*.patch
